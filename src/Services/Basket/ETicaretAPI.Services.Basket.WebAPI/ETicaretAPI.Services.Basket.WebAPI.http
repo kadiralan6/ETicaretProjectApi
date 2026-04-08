@@ -1,0 +1,6 @@
+@ETicaretAPI.Services.Basket.WebAPI_HostAddress = http://localhost:5090
+
+GET {{ETicaretAPI.Services.Basket.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

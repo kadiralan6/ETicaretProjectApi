@@ -1,0 +1,6 @@
+@ETicaretAPI.Services.Identity.WebAPI_HostAddress = http://localhost:5105
+
+GET {{ETicaretAPI.Services.Identity.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ETicaretAPI.Services.Basket.Domain\ETicaretAPI.Services.Basket.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Common\ETicaretAPI.Common.Persistence\ETicaretAPI.Common.Persistence.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ETicaretAPI.Services.Payment.Application\ETicaretAPI.Services.Payment.Application.csproj" />
+    <ProjectReference Include="..\..\..\Common\ETicaretAPI.Common.Infrastructure\ETicaretAPI.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\ETicaretAPI.Services.Payment.Persistence\ETicaretAPI.Services.Payment.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\Common\ETicaretAPI.Common.SharedLibrary\ETicaretAPI.Common.SharedLibrary.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

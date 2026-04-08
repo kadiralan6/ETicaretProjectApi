@@ -1,0 +1,14 @@
+using ETicaretAPI.Common.Persistence.DataAccess.EntityFramework;
+using ETicaretAPI.Services.Catalog.Application.Repositories;
+using ETicaretAPI.Services.Catalog.Domain.Entities;
+using ETicaretAPI.Services.Catalog.Persistence.Context;
+
+namespace ETicaretAPI.Services.Catalog.Persistence.Repositories;
+
+public class CategoryRepository : EfEntityRepositoryBase<Category, CatalogDbContext>, ICategoryRepository
+{
+    public CategoryRepository(CatalogDbContext context) : base(context)
+    {
+
+    }
+}
