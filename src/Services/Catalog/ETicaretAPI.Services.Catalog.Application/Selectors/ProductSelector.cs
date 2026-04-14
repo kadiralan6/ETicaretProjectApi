@@ -5,26 +5,25 @@ namespace ETicaretAPI.Services.Catalog.Application.Selectors;
 
 public static class ProductSelector
 {
-  public static Expression<Func<Product, Product>> GetProductWithDetailsSelector()
-  {
-    return x => new Product
+    public static Expression<Func<Product, Product>> GetProductWithDetailsSelector()
     {
-      Id = x.Id,
-      Code = x.Code,
-      Name = x.Name,
-      Description = x.Description,
-      Slug = x.Slug,
-      Price = x.Price,
-      StockQuantity = x.StockQuantity,
-      IsActive = x.IsActive,
-      IsFeatured = x.IsFeatured,
-      ImageUrl = x.ImageUrl,
-      CategoryId = x.CategoryId,
-      BrandId = x.BrandId,
-      CreatedAt = x.CreatedAt,
-      ModifiedAt = x.ModifiedAt,
-      Category = x.Category != null ? new Category { Id = x.Category.Id, Name = x.Category.Name } : null,
-      Brand = x.Brand != null ? new Brand { Id = x.Brand.Id, Name = x.Brand.Name } : null
-    };
-  }
+        return x => new Product
+        {
+            Id = x.Id,
+            Code = x.Code,
+            Name = x.Name,
+            Description = x.Description,
+            Slug = x.Slug,
+            Price = x.Price,
+            StockQuantity = x.StockQuantity,
+            IsActive = x.IsActive,
+            IsFeatured = x.IsFeatured,
+            CategoryId = x.CategoryId,
+            BrandId = x.BrandId,
+            CreatedAt = x.CreatedAt,
+            ModifiedAt = x.ModifiedAt,
+            Category = x.Category != null ? new Category { Id = x.Category.Id, Name = x.Category.Name } : null,
+            Brand = x.Brand != null ? new Brand { Id = x.Brand.Id, Name = x.Brand.Name } : null
+        };
+    }
 }

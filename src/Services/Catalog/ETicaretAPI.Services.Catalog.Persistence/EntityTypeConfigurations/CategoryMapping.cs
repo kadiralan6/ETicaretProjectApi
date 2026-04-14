@@ -12,24 +12,30 @@ public class CategoryMapping : BaseEntityConfiguration<Category>
         builder.ToTable("categories");
 
         builder.Property(x => x.Name)
+            .HasColumnName("name")
             .HasMaxLength(100)
                 .IsRequired();
 
         builder.Property(x => x.Slug)
+            .HasColumnName("slug")
             .HasMaxLength(100)
                 .IsRequired();
 
         builder.Property(x => x.Description)
+            .HasColumnName("description")
             .HasMaxLength(500);
 
         builder.Property(x => x.ImageUrl)
+            .HasColumnName("image_url")
            .HasMaxLength(300);
 
         builder.Property(x => x.DisplayOrder)
+            .HasColumnName("display_order")
            .HasDefaultValue(0);
 
         builder.Property(x => x.IsActive)
-        .HasDefaultValue(true);
+            .HasColumnName("is_active")
+            .HasDefaultValue(true);
 
         builder.HasIndex(x => x.Slug)
             .IsUnique();

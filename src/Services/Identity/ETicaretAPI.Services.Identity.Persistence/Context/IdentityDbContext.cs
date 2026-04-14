@@ -15,6 +15,14 @@ public class IdentityDbContext : IdentityDbContext<AppUser, AppRole, int>
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=ETicaretIdentityDb;Username=postgres;Password=EticaretAPI123!");
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

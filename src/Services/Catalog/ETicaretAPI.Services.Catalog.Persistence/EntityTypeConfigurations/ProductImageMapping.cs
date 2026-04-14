@@ -7,15 +7,25 @@ namespace ETicaretAPI.Services.Catalog.Persistence.EntityTypeConfigurations;
 
 public class ProductImageMapping : BaseEntityConfiguration<ProductImage>
 {
-  protected override void ConfigureEntity(EntityTypeBuilder<ProductImage> builder)
-  {
-    builder.ToTable("product_images");
+    protected override void ConfigureEntity(EntityTypeBuilder<ProductImage> builder)
+    {
+        builder.ToTable("product_images");
 
-    builder.Property(x => x.Url)
-        .HasMaxLength(500)
-        .IsRequired();
+        builder.Property(x => x.Url)
+            .HasColumnName("url")
+            .HasMaxLength(500)
+            .IsRequired();
 
-    builder.Property(x => x.IsCover)
-        .HasDefaultValue(false);
-  }
+        builder.Property(x => x.IsCover)
+            .HasColumnName("is_cover")
+            .HasDefaultValue(false);
+
+        builder.Property(x => x.ProductId)
+            .HasColumnName("product_id");
+
+        builder.HasOne(x => x.Product)
+            .WithMany(p => p.Images)
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
 }

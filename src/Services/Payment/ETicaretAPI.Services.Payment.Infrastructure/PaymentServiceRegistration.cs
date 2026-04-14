@@ -9,17 +9,16 @@ namespace ETicaretAPI.Services.Payment.Infrastructure;
 
 public static class PaymentServiceRegistration
 {
-  public static IServiceCollection AddPaymentServices(this IServiceCollection services, IConfiguration configuration)
-  {
-    // DbContext
-    services.AddDbContext<PaymentDbContext>(options =>
-        options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+    public static IServiceCollection AddPaymentServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // DbContext
+        services.AddDbContext<PaymentDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-    // Repositories
-    services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
-    services.AddScoped<IUnitOfWork>(sp =>
-        new UnitOfWork(sp.GetRequiredService<PaymentDbContext>()));
 
-    return services;
-  }
+        services.AddScoped<IUnitOfWork>(sp =>
+            new UnitOfWork(sp.GetRequiredService<PaymentDbContext>()));
+
+        return services;
+    }
 }

@@ -1,35 +1,30 @@
-using ETicaretAPI.Common.Persistence.Context;
+using System.Reflection;
+using ETicaretAPI.Common.Infrastructure.Configuration;
 using ETicaretAPI.Services.Basket.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ETicaretAPI.Services.Basket.Persistence.Context;
 
-public class BasketDbContext : BaseDbContext
+public class BasketDbContext : DbContext
 {
-  public BasketDbContext(DbContextOptions<BasketDbContext> options) : base(options) { }
+    public BasketDbContext(DbContextOptions<BasketDbContext> options) : base(options) { }
 
-  public DbSet<Campaign> Campaigns => Set<Campaign>();
-  public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<Campaign> Campaigns { get; set; }
+    public DbSet<Coupon> Coupons { get; set; }
 
-  protected override void OnModelCreating(ModelBuilder modelBuilder)
-  {
-    base.OnModelCreating(modelBuilder);
-
-    modelBuilder.Entity<Campaign>(entity =>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-      entity.HasKey(c => c.Id);
-      entity.Property(c => c.Name).IsRequired().HasMaxLength(200);
-      entity.Property(c => c.DiscountValue).HasColumnType("decimal(18,2)");
-      entity.Property(c => c.MinimumOrderAmount).HasColumnType("decimal(18,2)");
-    });
+        // Set legacy timestamp behavior for Npgsql globally
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-    modelBuilder.Entity<Coupon>(entity =>
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=ETicaretBasketDb;Username=postgres;Password=EticaretAPI123!");
+        }
+    }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-      entity.HasKey(c => c.Id);
-      entity.Property(c => c.Code).IsRequired().HasMaxLength(50);
-      entity.Property(c => c.DiscountValue).HasColumnType("decimal(18,2)");
-      entity.Property(c => c.MinimumOrderAmount).HasColumnType("decimal(18,2)");
-      entity.HasIndex(c => c.Code).IsUnique();
-    });
-  }
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+    }
 }

@@ -12,10 +12,9 @@ public class Product : Entity<int>
     public int StockQuantity { get; set; }
     public bool IsActive { get; set; }
     public bool IsFeatured { get; set; }
-    public string? ImageUrl { get; set; }
 
-    public int CategoryId { get; set; }
-    public int BrandId { get; set; }
+    public int? CategoryId { get; set; }
+    public int? BrandId { get; set; }
 
     // Navigation properties
     public Category? Category { get; set; }
