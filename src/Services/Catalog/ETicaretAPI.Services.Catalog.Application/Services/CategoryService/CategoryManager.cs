@@ -44,6 +44,16 @@ public class CategoryManager : ICategoryService
 
     public async Task<ApiResponse<GetCategoryDto>> CreateAsync(CreateCategoryDto dto, CancellationToken cancellationToken = default)
     {
+        // Eğer ParentCategoryId verilmişse, üst kategorinin var olup olmadığını doğrula
+        if (dto.ParentCategoryId.HasValue)
+        {
+            var parentExists = await _categoryRepository.AnyAsync(
+                x => x.Id == dto.ParentCategoryId.Value, cancellationToken);
+
+            if (!parentExists)
+                throw new NotFoundException($"ParentCategory with Id '{dto.ParentCategoryId.Value}' not found.");
+        }
+
         var category = _mapper.Map<Category>(dto);
         category.Slug = dto.Name?.ToSlug() ?? string.Empty;
 

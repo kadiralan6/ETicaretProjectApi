@@ -1,4 +1,5 @@
 using AutoMapper;
+using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Services.Catalog.Domain.DTOs.CategoryDtos;
 using ETicaretAPI.Services.Catalog.Domain.Entities;
 
@@ -10,5 +11,8 @@ public class CategoryProfile : Profile
     {
         CreateMap<Category, CreateCategoryDto>().ReverseMap();
         CreateMap<Category, UpdateCategoryDto>().ReverseMap();
+        CreateMap<Category, GetCategoryDto>().ReverseMap();
+        CreateMap<Category, GetCategoryForAdminFilterDto>().ReverseMap();
+        CreateMap<PagedResult<Category>, PagedResult<GetCategoryDto>>().ReverseMap();
     }
 }
