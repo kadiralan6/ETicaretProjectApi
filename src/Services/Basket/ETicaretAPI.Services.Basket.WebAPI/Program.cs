@@ -1,6 +1,6 @@
 using ETicaretAPI.Common.Infrastructure;
-using ETicaretAPI.Services.Basket.Persistence.Context;
-using Microsoft.EntityFrameworkCore;
+using ETicaretAPI.Services.Basket.Application;
+using ETicaretAPI.Services.Basket.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,9 +11,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database - SQL Server (kampanyalar/kuponlar veritabanında tutulur)
-builder.Services.AddDbContext<BasketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Infrastructure (DbContext)
+builder.Services.AddBasketServices(builder.Configuration);
+
+// Application (Services + IRestApiService)
+builder.Services.AddApplicationServices();
 
 // Common Infrastructure (Redis, RabbitMQ, HttpClient)
 builder.Services.AddCommonInfrastructure(builder.Configuration);
@@ -21,16 +23,16 @@ builder.Services.AddCommonInfrastructure(builder.Configuration);
 // CORS
 builder.Services.AddCors(options =>
 {
-  options.AddPolicy("AllowAll", policy =>
-      policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-  app.UseSwagger();
-  app.UseSwaggerUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseCors("AllowAll");

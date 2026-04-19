@@ -44,6 +44,16 @@ public class CategoryManager : ICategoryService
 
     public async Task<ApiResponse<GetCategoryDto>> CreateAsync(CreateCategoryDto dto, CancellationToken cancellationToken = default)
     {
+        // Eğer ParentCategoryId verilmişse, üst kategorinin var olup olmadığını doğrula
+        if (dto.ParentCategoryId.HasValue)
+        {
+            var parentExists = await _categoryRepository.AnyAsync(
+                x => x.Id == dto.ParentCategoryId.Value, cancellationToken);
+
+            if (!parentExists)
+                throw new NotFoundException($"ParentCategory with Id '{dto.ParentCategoryId.Value}' not found.");
+        }
+
         var category = _mapper.Map<Category>(dto);
         category.Slug = dto.Name?.ToSlug() ?? string.Empty;
 
@@ -65,6 +75,22 @@ public class CategoryManager : ICategoryService
             throw new NotFoundException(nameof(Category), id);
 
         var result = _mapper.Map<GetCategoryDto>(category);
+        return ApiResponse<GetCategoryDto>.Success(result);
+    }
+
+    public async Task<ApiResponse<GetCategoryDto>> GetAdminDetailByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var selector = CategorySelector.GetCategoryAdminDetailSelector();
+        var category = await _categoryRepository.GetAsNoTrackingWithSelectorAsync(
+            x => x.Id == id,
+            selector,
+            cancellationToken);
+
+        if (category is null)
+            throw new NotFoundException(nameof(Category), id);
+
+        var result = _mapper.Map<GetCategoryDto>(category);
+
         return ApiResponse<GetCategoryDto>.Success(result);
     }
 

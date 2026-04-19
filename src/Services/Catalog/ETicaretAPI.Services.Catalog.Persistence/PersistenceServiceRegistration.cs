@@ -16,10 +16,12 @@ public static class PersistenceServiceRegistration
     {
         services.AddDbContext<CatalogDbContext>((serviceProvider, options) =>
         {
-            options.UseNpgsql(configuration.GetConnectionString("Default"));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
 
             // Add audit interceptor for automatic change tracking
         }, ServiceLifetime.Scoped);
+
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<CatalogDbContext>());
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
