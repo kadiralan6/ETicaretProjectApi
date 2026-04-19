@@ -6,7 +6,7 @@ namespace ETicaretAPI.Services.Catalog.Application.Selectors;
 
 public static class CategorySelector
 {
-  public static Expression<Func<Category, Category>> GetCategoryWithSubCategoriesSelector()
+    public static Expression<Func<Category, Category>> GetCategoryWithSubCategoriesSelector()
     {
         return x => new Category
         {
@@ -33,6 +33,52 @@ public static class CategorySelector
                 CreatedAt = sub.CreatedAt,
                 ModifiedAt = sub.ModifiedAt
             }).ToList()
+        };
+    }
+
+    public static Expression<Func<Category, Category>> GetCategoryAdminDetailSelector()
+    {
+        return x => new Category
+        {
+            Id = x.Id,
+            Name = x.Name,
+            Description = x.Description,
+            Slug = x.Slug,
+            ImageUrl = x.ImageUrl,
+            ParentCategoryId = x.ParentCategoryId,
+            DisplayOrder = x.DisplayOrder,
+            IsActive = x.IsActive,
+            CreatedAt = x.CreatedAt,
+            ModifiedAt = x.ModifiedAt,
+            ParentCategory = x.ParentCategory == null
+                ? null
+                : new Category
+                {
+                    Id = x.ParentCategory.Id,
+                    Name = x.ParentCategory.Name
+                },
+            SubCategories = x.SubCategories
+                .OrderBy(sub => sub.DisplayOrder)
+                .ThenBy(sub => sub.Name)
+                .Select(sub => new Category
+                {
+                    Id = sub.Id,
+                    Name = sub.Name,
+                    Description = sub.Description,
+                    Slug = sub.Slug,
+                    ImageUrl = sub.ImageUrl,
+                    ParentCategoryId = sub.ParentCategoryId,
+                    DisplayOrder = sub.DisplayOrder,
+                    IsActive = sub.IsActive,
+                    CreatedAt = sub.CreatedAt,
+                    ModifiedAt = sub.ModifiedAt,
+                    ParentCategory = new Category
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    }
+                })
+                .ToList()
         };
     }
 }

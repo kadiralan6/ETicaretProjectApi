@@ -11,7 +11,9 @@ public class CategoryProfile : Profile
     {
         CreateMap<Category, CreateCategoryDto>().ReverseMap();
         CreateMap<Category, UpdateCategoryDto>().ReverseMap();
-        CreateMap<Category, GetCategoryDto>().ReverseMap();
+        CreateMap<Category, GetCategoryDto>()
+            .ForMember(dest => dest.ParentCategoryName,
+                opt => opt.MapFrom(src => src.ParentCategory != null ? src.ParentCategory.Name : null));
         CreateMap<Category, GetCategoryForAdminFilterDto>().ReverseMap();
         CreateMap<PagedResult<Category>, PagedResult<GetCategoryDto>>().ReverseMap();
     }

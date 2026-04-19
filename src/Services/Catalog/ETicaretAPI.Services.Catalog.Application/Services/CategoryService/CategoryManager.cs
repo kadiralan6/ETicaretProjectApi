@@ -78,6 +78,22 @@ public class CategoryManager : ICategoryService
         return ApiResponse<GetCategoryDto>.Success(result);
     }
 
+    public async Task<ApiResponse<GetCategoryDto>> GetAdminDetailByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var selector = CategorySelector.GetCategoryAdminDetailSelector();
+        var category = await _categoryRepository.GetAsNoTrackingWithSelectorAsync(
+            x => x.Id == id,
+            selector,
+            cancellationToken);
+
+        if (category is null)
+            throw new NotFoundException(nameof(Category), id);
+
+        var result = _mapper.Map<GetCategoryDto>(category);
+
+        return ApiResponse<GetCategoryDto>.Success(result);
+    }
+
     public async Task<ApiResponse<GetCategoryDto>> UpdateAsync(UpdateCategoryDto dto, CancellationToken cancellationToken = default)
     {
         var category = await _categoryRepository.GetAsync(x => x.Id == dto.Id);

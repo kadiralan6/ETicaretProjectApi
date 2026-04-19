@@ -29,6 +29,13 @@ public class CategoriesController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("getAdminDetail/{id:int}")]
+    public async Task<IActionResult> GetAdminDetail(int id, CancellationToken cancellationToken = default)
+    {
+        var result = await _categoryService.GetAdminDetailByIdAsync(id, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpPost("create")]
     public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto, CancellationToken cancellationToken = default)
     {

@@ -18,12 +18,14 @@ public class ProductManager : IProductService
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly IProductImageRepository _productImageRepository;
 
-    public ProductManager(IProductRepository productRepository, IUnitOfWork unitOfWork, IMapper mapper)
+    public ProductManager(IProductRepository productRepository, IUnitOfWork unitOfWork, IMapper mapper, IProductImageRepository productImageRepository)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _productImageRepository = productImageRepository;
     }
 
     public async Task<ApiResponse<PagedResult<GetProductDto>>> GetProductsFilterAsync(GetProductForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -54,6 +56,10 @@ public class ProductManager : IProductService
             throw new NotFoundException(nameof(Product), id);
 
         var result = _mapper.Map<GetProductDto>(product);
+
+        var imageUrls = await _productImageRepository.GetAllAsync(a => a.ProductId == id, cancellationToken: cancellationToken);
+        result.ImageUrls = imageUrls.Select(i => i.Url).ToList();
+
         return ApiResponse<GetProductDto>.Success(result);
     }
 

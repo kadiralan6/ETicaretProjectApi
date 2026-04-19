@@ -15,8 +15,8 @@ public class ProductsController : ControllerBase
         _productService = productService;
     }
 
-    [HttpGet("getAll")]
-    public async Task<IActionResult> GetAll([FromQuery] GetProductForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
+    [HttpGet("getAllFilter")]
+    public async Task<IActionResult> GetAllFilter([FromQuery] GetProductForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
     {
         var result = await _productService.GetProductsFilterAsync(filterDto, cancellationToken);
         return StatusCode(result.StatusCode, result);

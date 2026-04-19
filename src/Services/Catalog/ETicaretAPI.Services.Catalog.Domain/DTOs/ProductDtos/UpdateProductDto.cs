@@ -10,7 +10,6 @@ public class UpdateProductDto
     public int StockQuantity { get; set; }
     public bool IsActive { get; set; }
     public bool IsFeatured { get; set; }
-    public string? ImageUrl { get; set; }
     public int CategoryId { get; set; }
     public int BrandId { get; set; }
 }
