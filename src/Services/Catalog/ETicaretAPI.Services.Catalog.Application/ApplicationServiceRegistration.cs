@@ -1,4 +1,6 @@
 using AutoMapper;
+using ETicaretAPI.Common.Application.Interfaces;
+using ETicaretAPI.Common.Application.Services;
 using ETicaretAPI.Services.Catalog.Application.Repositories;
 using ETicaretAPI.Services.Catalog.Application.Services.BrandService;
 using ETicaretAPI.Services.Catalog.Application.Services.CategoryService;
@@ -19,6 +21,9 @@ public static class ApplicationServiceRegistration
        cfg.AddMaps(Assembly.GetExecutingAssembly());
        cfg.AddProfile<ETicaretAPI.Common.Infrastructure.Mappings.GlobalMappingProfile>();
      });
+
+    // Cache
+    services.AddSingleton<ICacheService, RedisCacheManager>();
 
     // Services
     services.AddScoped<ICategoryService, CategoryManager>();

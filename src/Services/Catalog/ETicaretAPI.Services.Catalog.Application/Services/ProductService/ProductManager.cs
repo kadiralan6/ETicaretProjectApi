@@ -1,5 +1,6 @@
 using AutoMapper;
 using ETicaretAPI.Common.Application.Exceptions;
+using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Domain.Interfaces;
@@ -19,13 +20,23 @@ public class ProductManager : IProductService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly IProductImageRepository _productImageRepository;
+    private readonly ICacheService _cacheService;
 
-    public ProductManager(IProductRepository productRepository, IUnitOfWork unitOfWork, IMapper mapper, IProductImageRepository productImageRepository)
+    private static string ProductCacheKey(int id) => $"catalog:product:{id}";
+    private static readonly TimeSpan ProductCacheTtl = TimeSpan.FromMinutes(60);
+
+    public ProductManager(
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        IProductImageRepository productImageRepository,
+        ICacheService cacheService)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _productImageRepository = productImageRepository;
+        _cacheService = cacheService;
     }
 
     public async Task<ApiResponse<PagedResult<GetProductDto>>> GetProductsFilterAsync(GetProductForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -43,6 +54,10 @@ public class ProductManager : IProductService
 
     public async Task<ApiResponse<GetProductDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
+        var cached = await _cacheService.GetAsync<GetProductDto>(ProductCacheKey(id), cancellationToken);
+        if (cached is not null)
+            return ApiResponse<GetProductDto>.Success(cached);
+
         var product = await _productRepository.GetWithAsNoTrackingAsync(
             x => x.Id == id,
             new System.Linq.Expressions.Expression<Func<Product, object>>[]
@@ -60,6 +75,8 @@ public class ProductManager : IProductService
         var imageUrls = await _productImageRepository.GetAllAsync(a => a.ProductId == id, cancellationToken: cancellationToken);
         result.ImageUrls = imageUrls.Select(i => i.Url).ToList();
 
+        await _cacheService.SetAsync(ProductCacheKey(id), result, ProductCacheTtl, cancellationToken);
+
         return ApiResponse<GetProductDto>.Success(result);
     }
 
@@ -73,6 +90,8 @@ public class ProductManager : IProductService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var result = _mapper.Map<GetProductDto>(product);
+        await _cacheService.SetAsync(ProductCacheKey(product.Id), result, ProductCacheTtl, cancellationToken);
+
         return ApiResponse<GetProductDto>.Success(result);
     }
 
@@ -89,6 +108,8 @@ public class ProductManager : IProductService
         await _productRepository.UpdateAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await _cacheService.RemoveAsync(ProductCacheKey(dto.Id), cancellationToken);
+
         var result = _mapper.Map<GetProductDto>(product);
         return ApiResponse<GetProductDto>.Success(result);
     }
@@ -103,6 +124,8 @@ public class ProductManager : IProductService
         await _productRepository.SoftDeleteAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await _cacheService.RemoveAsync(ProductCacheKey(id), cancellationToken);
+
         return ApiResponse<bool>.Success(true);
     }
 
@@ -116,6 +139,7 @@ public class ProductManager : IProductService
         product.StockQuantity = dto.Quantity ?? product.StockQuantity;
 
         await _productRepository.UpdateFieldAsync(product, [x => x.StockQuantity], cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(dto.ProductId!.Value), cancellationToken);
 
         return ApiResponse<bool>.Success(true);
     }

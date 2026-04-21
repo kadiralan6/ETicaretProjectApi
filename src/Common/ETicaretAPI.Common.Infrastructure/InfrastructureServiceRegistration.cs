@@ -15,8 +15,8 @@ public static class InfrastructureServiceRegistration
     // Redis Cache
     services.AddStackExchangeRedisCache(options =>
     {
-      options.Configuration = configuration.GetConnectionString("Redis");
-      options.InstanceName = "ETicaretAPI_";
+      options.Configuration = configuration["RedisConfiguration:ConnectionString"] ?? configuration.GetConnectionString("Redis");
+      options.InstanceName = configuration["RedisConfiguration:InstanceName"] ?? "ETicaretAPI_";
     });
 
     // RabbitMQ

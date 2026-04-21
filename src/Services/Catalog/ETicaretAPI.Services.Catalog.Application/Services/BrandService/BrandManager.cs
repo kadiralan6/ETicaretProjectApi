@@ -1,5 +1,6 @@
 using AutoMapper;
 using ETicaretAPI.Common.Application.Exceptions;
+using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Domain.Interfaces;
@@ -15,14 +16,25 @@ namespace ETicaretAPI.Services.Catalog.Application.Services.BrandService;
 public class BrandManager : IBrandService
 {
     private readonly IBrandRepository _brandRepository;
+    private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ICacheService _cacheService;
 
-    public BrandManager(IBrandRepository brandRepository, IUnitOfWork unitOfWork, IMapper mapper)
+    private static string ProductCacheKey(int productId) => $"catalog:product:{productId}";
+
+    public BrandManager(
+        IBrandRepository brandRepository,
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ICacheService cacheService)
     {
         _brandRepository = brandRepository;
+        _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _cacheService = cacheService;
     }
 
     public async Task<ApiResponse<PagedResult<GetBrandDto>>> GetBrandsFilterAsync(GetBrandForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -74,6 +86,8 @@ public class BrandManager : IBrandService
 
         await _brandRepository.UpdateAsync(brand, cancellationToken);
 
+        await InvalidateProductCachesByBrandAsync(dto.Id, cancellationToken);
+
         var result = _mapper.Map<GetBrandDto>(brand);
         return ApiResponse<GetBrandDto>.Success(result);
     }
@@ -87,6 +101,15 @@ public class BrandManager : IBrandService
 
         await _brandRepository.SoftDeleteAsync(brand, cancellationToken);
 
+        await InvalidateProductCachesByBrandAsync(id, cancellationToken);
+
         return ApiResponse<bool>.Success(true);
+    }
+
+    private async Task InvalidateProductCachesByBrandAsync(int brandId, CancellationToken cancellationToken)
+    {
+        var products = await _productRepository.GetAllAsync(x => x.BrandId == brandId, cancellationToken: cancellationToken);
+        foreach (var product in products)
+            await _cacheService.RemoveAsync(ProductCacheKey(product.Id), cancellationToken);
     }
 }

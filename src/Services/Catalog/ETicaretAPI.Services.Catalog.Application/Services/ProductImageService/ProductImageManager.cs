@@ -1,5 +1,6 @@
 using AutoMapper;
 using ETicaretAPI.Common.Application.Exceptions;
+using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Domain.Interfaces;
 using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
@@ -16,13 +17,22 @@ public class ProductImageManager : IProductImageService
     private readonly IImageUploadService _imageUploadService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ICacheService _cacheService;
 
-    public ProductImageManager(IProductImageRepository productImageRepository, IImageUploadService imageUploadService, IUnitOfWork unitOfWork, IMapper mapper)
+    private static string ProductCacheKey(int productId) => $"catalog:product:{productId}";
+
+    public ProductImageManager(
+        IProductImageRepository productImageRepository,
+        IImageUploadService imageUploadService,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ICacheService cacheService)
     {
         _productImageRepository = productImageRepository;
         _imageUploadService = imageUploadService;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _cacheService = cacheService;
     }
 
     public async Task<ApiResponse<List<GetProductImageDto>>> GetImagesByProductIdAsync(int productId, CancellationToken cancellationToken = default)
@@ -77,6 +87,7 @@ public class ProductImageManager : IProductImageService
 
         await _productImageRepository.AddAsync(image, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(image.ProductId), cancellationToken);
 
         var result = _mapper.Map<GetProductImageDto>(image);
         return ApiResponse<GetProductImageDto>.Success(result);
@@ -118,6 +129,7 @@ public class ProductImageManager : IProductImageService
 
         await _productImageRepository.UpdateAsync(image, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(image.ProductId), cancellationToken);
 
         var result = _mapper.Map<GetProductImageDto>(image);
         return ApiResponse<GetProductImageDto>.Success(result);
@@ -132,6 +144,7 @@ public class ProductImageManager : IProductImageService
 
         await _productImageRepository.HardDeleteAsync(image, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(image.ProductId), cancellationToken);
 
         return ApiResponse<bool>.Success(true);
     }
