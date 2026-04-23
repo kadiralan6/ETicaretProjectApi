@@ -6,12 +6,12 @@ namespace ETicaretAPI.Common.Application;
 
 public static class ApplicationServiceRegistration
 {
-  public static IServiceCollection AddApplicationServices(this IServiceCollection services)
-  {
-    services.AddSingleton<ICacheService, RedisCacheManager>();
-    services.AddSingleton<IEventBus, RabbitMQEventBusManager>();
-    services.AddScoped<IRestService, RestManager>();
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    {
+        services.AddSingleton<ICacheService, RedisCacheManager>();
+        services.AddSingleton<IEventBus, RabbitMQEventBusManager>();
+        services.AddScoped<IRestService, RestManager>();
 
-    return services;
-  }
+        return services;
+    }
 }

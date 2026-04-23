@@ -5,6 +5,12 @@ namespace ETicaretAPI.Services.Catalog.Application.Selectors;
 
 public static class ProductSelector
 {
+    public static Expression<Func<Product, object>>[] GetProductIncludes() =>
+    [
+        x => x.Category,
+        x => x.Brand
+    ];
+
     public static Expression<Func<Product, Product>> GetProductWithDetailsSelector()
     {
         return x => new Product

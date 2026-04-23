@@ -1,9 +1,11 @@
+using System.Linq.Expressions;
 using AutoMapper;
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Domain.Interfaces;
+using ETicaretAPI.Common.SharedLibrary.Events;
 using ETicaretAPI.Common.SharedLibrary.Extensions;
 using ETicaretAPI.Services.Catalog.Application.Orders;
 using ETicaretAPI.Services.Catalog.Application.Predicates;
@@ -21,6 +23,7 @@ public class ProductManager : IProductService
     private readonly IMapper _mapper;
     private readonly IProductImageRepository _productImageRepository;
     private readonly ICacheService _cacheService;
+    private readonly IEventBus _eventBus;
 
     private static string ProductCacheKey(int id) => $"catalog:product:{id}";
     private static readonly TimeSpan ProductCacheTtl = TimeSpan.FromMinutes(60);
@@ -30,13 +33,15 @@ public class ProductManager : IProductService
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IProductImageRepository productImageRepository,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        IEventBus eventBus)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _productImageRepository = productImageRepository;
         _cacheService = cacheService;
+        _eventBus = eventBus;
     }
 
     public async Task<ApiResponse<PagedResult<GetProductDto>>> GetProductsFilterAsync(GetProductForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -49,6 +54,18 @@ public class ProductManager : IProductService
             filterDto.Page, filterDto.PageSize, predicate, orders, selector, cancellationToken);
 
         var result = _mapper.Map<PagedResult<GetProductDto>>(products);
+
+        var productIds = result.Results.Select(p => p.Id).ToList();
+        var images = await _productImageRepository.GetAllWithAsNoTrackingAsync(
+            x => productIds.Contains(x.ProductId));
+        var imageDict = images.GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.Select(i => i.Url).ToList());
+        foreach (var product in result.Results)
+        {
+            if (imageDict.TryGetValue(product.Id, out var urls))
+                product.ImageUrls = urls;
+        }
+
         return ApiResponse<PagedResult<GetProductDto>>.Success(result);
     }
 
@@ -60,11 +77,7 @@ public class ProductManager : IProductService
 
         var product = await _productRepository.GetWithAsNoTrackingAsync(
             x => x.Id == id,
-            new System.Linq.Expressions.Expression<Func<Product, object>>[]
-            {
-                x => x.Category,
-                x => x.Brand
-            },
+            ProductSelector.GetProductIncludes(),
             cancellationToken);
 
         if (product is null)
@@ -72,8 +85,11 @@ public class ProductManager : IProductService
 
         var result = _mapper.Map<GetProductDto>(product);
 
-        var imageUrls = await _productImageRepository.GetAllAsync(a => a.ProductId == id, cancellationToken: cancellationToken);
-        result.ImageUrls = imageUrls.Select(i => i.Url).ToList();
+        var images = await _productImageRepository.GetAllAsNoTrackingWithSelectorAsync(
+            a => a.ProductId == id,
+            x => new ProductImage { Url = x.Url },
+            cancellationToken);
+        result.ImageUrls = images.Select(i => i.Url).ToList();
 
         await _cacheService.SetAsync(ProductCacheKey(id), result, ProductCacheTtl, cancellationToken);
 
@@ -89,9 +105,30 @@ public class ProductManager : IProductService
         await _productRepository.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var result = _mapper.Map<GetProductDto>(product);
-        await _cacheService.SetAsync(ProductCacheKey(product.Id), result, ProductCacheTtl, cancellationToken);
+        // Load category and brand names for the search index
+        var productWithDetails = await _productRepository.GetWithAsNoTrackingAsync(
+            x => x.Id == product.Id,
+            ProductSelector.GetProductIncludes(),
+            cancellationToken);
 
+        await _eventBus.PublishAsync(new ProductCreatedEvent
+        {
+            ProductId = product.Id,
+            Code = product.Code,
+            Name = product.Name,
+            Description = product.Description,
+            Slug = product.Slug,
+            Price = product.Price,
+            StockQuantity = product.StockQuantity,
+            IsActive = product.IsActive,
+            IsFeatured = product.IsFeatured,
+            CategoryId = product.CategoryId,
+            CategoryName = productWithDetails?.Category?.Name,
+            BrandId = product.BrandId,
+            BrandName = productWithDetails?.Brand?.Name
+        }, cancellationToken);
+
+        var result = _mapper.Map<GetProductDto>(product);
         return ApiResponse<GetProductDto>.Success(result);
     }
 
@@ -103,12 +140,41 @@ public class ProductManager : IProductService
             throw new NotFoundException(nameof(Product), dto.Id);
 
         _mapper.Map(dto, product);
-        product.Slug = dto.Name.ToSlug();
+        product.Slug = dto.Name?.ToSlug() ?? string.Empty;
 
         await _productRepository.UpdateAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _cacheService.RemoveAsync(ProductCacheKey(dto.Id), cancellationToken);
+
+        // Load category and brand names for the search index
+        var productWithDetails = await _productRepository.GetWithAsNoTrackingAsync(
+            x => x.Id == product.Id,
+            ProductSelector.GetProductIncludes(),
+            cancellationToken);
+
+        var images = await _productImageRepository.GetAllAsNoTrackingWithSelectorAsync(
+            a => a.ProductId == product.Id,
+            x => new ProductImage { Url = x.Url },
+            cancellationToken);
+
+        await _eventBus.PublishAsync(new ProductUpdatedEvent
+        {
+            ProductId = product.Id,
+            Code = product.Code,
+            Name = product.Name,
+            Description = product.Description,
+            Slug = product.Slug,
+            Price = product.Price,
+            StockQuantity = product.StockQuantity,
+            IsActive = product.IsActive,
+            IsFeatured = product.IsFeatured,
+            CategoryId = product.CategoryId,
+            CategoryName = productWithDetails?.Category?.Name,
+            BrandId = product.BrandId,
+            BrandName = productWithDetails?.Brand?.Name,
+            ImageUrls = images.Select(i => i.Url).Where(u => u is not null).Cast<string>().ToList()
+        }, cancellationToken);
 
         var result = _mapper.Map<GetProductDto>(product);
         return ApiResponse<GetProductDto>.Success(result);
@@ -126,20 +192,30 @@ public class ProductManager : IProductService
 
         await _cacheService.RemoveAsync(ProductCacheKey(id), cancellationToken);
 
+        await _eventBus.PublishAsync(new ProductDeletedEvent
+        {
+            ProductId = id
+        }, cancellationToken);
+
         return ApiResponse<bool>.Success(true);
     }
 
     public async Task<ApiResponse<bool>> UpdateStockAsync(UpdateProductQuantityDto dto, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetAsync(x => x.Id == dto.ProductId, cancellationToken: cancellationToken);
+        if (dto.ProductId is null)
+            throw new ValidationException(["ProductId is required."]);
 
-        if (product is null)
-            throw new NotFoundException(nameof(Product), dto.ProductId);
+        if (dto.Quantity is null)
+            throw new ValidationException(["Quantity is required."]);
 
-        product.StockQuantity = dto.Quantity ?? product.StockQuantity;
+        var product = await _productRepository.GetAsync(x => x.Id == dto.ProductId.Value, cancellationToken: cancellationToken)
+            ?? throw new NotFoundException(nameof(Product), dto.ProductId.Value);
+
+        product.StockQuantity = dto.Quantity.Value;
 
         await _productRepository.UpdateFieldAsync(product, [x => x.StockQuantity], cancellationToken);
-        await _cacheService.RemoveAsync(ProductCacheKey(dto.ProductId!.Value), cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(dto.ProductId.Value), cancellationToken);
 
         return ApiResponse<bool>.Success(true);
     }

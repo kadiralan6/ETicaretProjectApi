@@ -179,6 +179,51 @@
                     "Port": 5004
                 }
             ]
+        },
+        {
+            "UpstreamPathTemplate": "/gateway/search/swagger/{everything}",
+            "DownstreamPathTemplate": "/swagger/{everything}",
+            "UpstreamHttpMethod": [
+                "GET"
+            ],
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "localhost",
+                    "Port": 5005
+                }
+            ]
+        },
+        {
+            "UpstreamPathTemplate": "/gateway/search/swagger",
+            "DownstreamPathTemplate": "/swagger",
+            "UpstreamHttpMethod": [
+                "GET"
+            ],
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "localhost",
+                    "Port": 5005
+                }
+            ]
+        },
+        {
+            "UpstreamPathTemplate": "/api/search/{everything}",
+            "UpstreamHttpMethod": [
+                "Get",
+                "Post",
+                "Put",
+                "Delete"
+            ],
+            "DownstreamPathTemplate": "/api/search/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "localhost",
+                    "Port": 5005
+                }
+            ]
         }
     ],
     "GlobalConfiguration": {
