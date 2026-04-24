@@ -14,6 +14,8 @@ public class GetProductDto : BaseDto
     public bool IsActive { get; set; }
     public bool IsFeatured { get; set; }
     public int CategoryId { get; set; }
+    public int? ParentCategoryId { get; set; }
+    public string? ParentCategoryName { get; set; }
     public string? CategoryName { get; set; }
     public int BrandId { get; set; }
     public string? BrandName { get; set; }

@@ -33,4 +33,10 @@ public interface IStorefrontService
     /// GET /api/home
     /// </summary>
     Task<ApiResponse<HomePageDto>> GetHomeDataAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ürün detay sayfasının altına "Benzer Ürünler" bölümü için.
+    /// Aynı kategoriden, mevcut ürün hariç, en fazla <paramref name="count"/> ürün döner.
+    /// </summary>
+    Task<ApiResponse<List<ProductCardDto>>> GetSimilarProductsAsync(string slug, int count, CancellationToken cancellationToken = default);
 }

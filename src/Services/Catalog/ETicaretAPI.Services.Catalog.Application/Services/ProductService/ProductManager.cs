@@ -81,15 +81,11 @@ public class ProductManager : IProductService
 
     public async Task<ApiResponse<GetProductDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        await _cacheService.RemoveAsync(ProductCacheKey(id), cancellationToken); // Cache temizleme (güncel olmayan veri olabilir)
         var cached = await _cacheService.GetAsync<GetProductDto>(ProductCacheKey(id), cancellationToken);
         if (cached is not null)
             return ApiResponse<GetProductDto>.Success(cached);
 
-        var product = await _productRepository.GetWithAsNoTrackingAsync(
-            x => x.Id == id,
-            ProductSelector.GetProductIncludes(),
-            cancellationToken);
+        var product = await _productRepository.GetProductWithRelationsAsync(id, cancellationToken);
 
         if (product is null)
             throw new NotFoundException(nameof(Product), id);
@@ -100,18 +96,16 @@ public class ProductManager : IProductService
             a => a.ProductId == id,
             x => new ProductImage { Id = x.Id, Url = x.Url, AltText = x.AltText, IsCover = x.IsCover },
             cancellationToken);
-        List<GetProductImageDto> imageDtos = new List<GetProductImageDto>();
-        foreach (var image in images)
+
+        result.Images = images.Select(image => new GetProductImageDto
         {
-            GetProductImageDto productImageDto = new GetProductImageDto();
-            productImageDto.Url = image.Url;
-            productImageDto.ProductId = id;
-            productImageDto.Id = image.Id;
-            productImageDto.AltText = image.AltText;
-            productImageDto.IsCover = image.IsCover;
-            imageDtos.Add(productImageDto);
-        }
-        result.Images = imageDtos;
+            Id = image.Id,
+            Url = image.Url,
+            AltText = image.AltText,
+            IsCover = image.IsCover,
+            ProductId = id
+        }).ToList();
+
         await _cacheService.SetAsync(ProductCacheKey(id), result, ProductCacheTtl, cancellationToken);
 
         return ApiResponse<GetProductDto>.Success(result);
@@ -131,10 +125,7 @@ public class ProductManager : IProductService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Load category and brand names for the search index
-        var productWithDetails = await _productRepository.GetWithAsNoTrackingAsync(
-            x => x.Id == product.Id,
-            ProductSelector.GetProductIncludes(),
-            cancellationToken);
+        var productWithDetails = await _productRepository.GetProductWithRelationsAsync(product.Id, cancellationToken);
 
         await _eventBus.PublishAsync(new ProductCreatedEvent
         {
@@ -177,10 +168,7 @@ public class ProductManager : IProductService
         await _cacheService.RemoveAsync(ProductCacheKey(dto.Id), cancellationToken);
 
         // Load category and brand names for the search index
-        var productWithDetails = await _productRepository.GetWithAsNoTrackingAsync(
-            x => x.Id == product.Id,
-            ProductSelector.GetProductIncludes(),
-            cancellationToken);
+        var productWithDetails = await _productRepository.GetProductWithRelationsAsync(product.Id, cancellationToken);
 
         var images = await _productImageRepository.GetAllAsNoTrackingWithSelectorAsync(
             a => a.ProductId == product.Id,

@@ -27,4 +27,17 @@ public interface IProductRepository : IEntityRepository<Product>
     /// excludeId: Güncelleme sırasında kendi slug'ını hariç tutmak için.
     /// </summary>
     Task<bool> IsSlugExistsAsync(string slug, int? excludeId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ID ile ürünü Category→ParentCategory ve Brand dahil getirir.
+    /// GetWithAsNoTrackingAsync'in Include array limitasyonunu (EF Core 8 Convert hatası) aşmak için
+    /// proper Include/ThenInclude zinciriyle sorgu yapar.
+    /// </summary>
+    Task<Product?> GetProductWithRelationsAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Slug'ı verilen ürünle aynı kategorideki benzer ürün kartlarını getirir.
+    /// Mevcut ürün sonuçtan hariç tutulur. Cover image projection'a dahil.
+    /// </summary>
+    Task<List<ProductCardDto>> GetSimilarProductCardsBySlugAsync(string slug, int count, CancellationToken cancellationToken = default);
 }

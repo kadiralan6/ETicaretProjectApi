@@ -154,4 +154,63 @@ public class ProductRepository : EfEntityRepositoryBase<Product, CatalogDbContex
 
         return await query.AnyAsync(cancellationToken);
     }
+
+    public async Task<Product?> GetProductWithRelationsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .AsNoTracking()
+            .Include(p => p.Category)
+                .ThenInclude(c => c!.ParentCategory)
+            .Include(p => p.Brand)
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, cancellationToken);
+    }
+
+    public async Task<List<ProductCardDto>> GetSimilarProductCardsBySlugAsync(
+        string slug, int count, CancellationToken cancellationToken = default)
+    {
+        // Mevcut ürünün ID ve CategoryId'sini al — tek lightweight sorgu
+        var source = await _context.Products
+            .AsNoTracking()
+            .Where(p => p.Slug == slug && !p.IsDeleted)
+            .Select(p => new { p.Id, p.CategoryId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (source is null) return [];
+
+        return await _context.Products
+            .AsNoTracking()
+            .Where(p => p.CategoryId == source.CategoryId
+                     && p.Id != source.Id
+                     && p.IsActive
+                     && !p.IsDeleted)
+            .OrderByDescending(p => p.IsFeatured)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(count)
+            .Select(p => new ProductCardDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Slug = p.Slug,
+                ShortDescription = p.ShortDescription,
+                Price = p.Price,
+                Currency = "TRY",
+                StockQuantity = p.StockQuantity,
+                IsInStock = p.StockQuantity > 0,
+                IsActive = p.IsActive,
+                CoverImageUrl = p.Images
+                    .Where(i => i.IsCover && !i.IsDeleted)
+                    .Select(i => i.Url)
+                    .FirstOrDefault(),
+                CoverImageAlt = p.Images
+                    .Where(i => i.IsCover && !i.IsDeleted)
+                    .Select(i => i.AltText)
+                    .FirstOrDefault(),
+                CategoryName = p.Category != null ? p.Category.Name : null,
+                CategorySlug = p.Category != null ? p.Category.Slug : null,
+                CategoryPath = p.Category != null ? p.Category.Slug : null,
+                BrandName = p.Brand != null ? p.Brand.Name : null,
+                BrandSlug = p.Brand != null ? p.Brand.Slug : null
+            })
+            .ToListAsync(cancellationToken);
+    }
 }

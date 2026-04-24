@@ -19,7 +19,7 @@ public class StorefrontCategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// Kategoriye ait ürünleri sayfalı getirir.
+    /// Kategoriye ait ürünleri sayfalı getirir.Kategori ürün listeleme sayfası
     /// Kullanım: /kategori/telefon sayfası için.
     /// </summary>
     [HttpGet("GetProductsByCategory/{slug}")]
@@ -34,8 +34,11 @@ public class StorefrontCategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// Kategori breadcrumb hiyerarşisini getirir.
+    /// Kategori breadcrumb hiyerarşisini getirir. Aynı sayfa, JSON-LD için
     /// Kökten yaprağa sıralı — [Elektronik, Telefon, Apple].
+    /// Ana Sayfa (/)              → getHomeData
+    /// Kategori (/kategori/slug)  → /{slug}/products  +  GetBreadcrumb/{slug}
+    /// Ürün Detay (/urun/slug)    → GetBySlug/{slug}
     /// </summary>
     [HttpGet("GetBreadcrumb/{slug}")]
     public async Task<IActionResult> GetBreadcrumb(string slug, CancellationToken cancellationToken = default)

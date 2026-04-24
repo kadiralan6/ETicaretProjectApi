@@ -1,3 +1,4 @@
+using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Infrastructure.ApiService;
@@ -125,7 +126,7 @@ public sealed class SearchManager : ISearchService
         CategoryName = dto.CategoryName,
         BrandId = dto.BrandId,
         BrandName = dto.BrandName,
-        ImageUrls = dto.ImageUrls ?? [],
+        ImageUrls = dto.Images.Select(i => i.Url).Where(url => url is not null).Cast<string>().ToList(),
         CreatedAt = dto.CreatedAt,
         ModifiedAt = dto.ModifiedAt,
     };
@@ -145,7 +146,7 @@ public sealed class SearchManager : ISearchService
         public string? CategoryName { get; set; }
         public int BrandId { get; set; }
         public string? BrandName { get; set; }
-        public List<string> ImageUrls { get; set; } = [];
+        public List<GetProductImageDto> Images { get; set; } = [];
         public DateTime CreatedAt { get; set; }
         public DateTime? ModifiedAt { get; set; }
     }

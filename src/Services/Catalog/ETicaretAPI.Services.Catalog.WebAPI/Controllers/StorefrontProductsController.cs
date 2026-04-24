@@ -29,4 +29,16 @@ public class StorefrontProductsController : ControllerBase
         var result = await _storefrontService.GetProductBySlugAsync(slug, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
+
+    /// <summary>
+    /// Ürün detay sayfası altındaki "Benzer Ürünler" bölümü için.
+    /// Aynı kategoriden, mevcut ürün hariç ürün kartlarını getirir.
+    /// count: 1–20 arası, varsayılan 8.
+    /// </summary>
+    [HttpGet("GetSimilar/{slug}")]
+    public async Task<IActionResult> GetSimilar(string slug, [FromQuery] int count = 8, CancellationToken cancellationToken = default)
+    {
+        var result = await _storefrontService.GetSimilarProductsAsync(slug, count, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
 }

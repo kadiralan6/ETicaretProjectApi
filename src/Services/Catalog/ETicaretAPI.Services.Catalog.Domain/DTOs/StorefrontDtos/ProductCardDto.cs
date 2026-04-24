@@ -32,4 +32,5 @@ public class ProductCardDto
     public string? BrandSlug { get; set; }
 
     public RatingDto? Rating { get; set; }
+    public List<string> ImageUrls { get; set; } = [];
 }

@@ -10,6 +10,7 @@ public class StorefrontManager : IStorefrontService
 {
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IProductImageRepository _productImageRepository;
     private readonly ICacheService _cacheService;
 
     // Cache key patterns — slug bazlı
@@ -23,19 +24,23 @@ public class StorefrontManager : IStorefrontService
     private static readonly TimeSpan CategoryProductsTtl = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan BreadcrumbTtl = TimeSpan.FromMinutes(60);
     private static readonly TimeSpan HomeTtl = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan SimilarProductsTtl = TimeSpan.FromMinutes(15);
 
     // Varsayılan limitler
     private const int FeaturedProductsCount = 8;
     private const int PopularCategoriesCount = 6;
+    private const int MaxSimilarProductsCount = 20;
 
     public StorefrontManager(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        IProductImageRepository productImageRepository)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _cacheService = cacheService;
+        _productImageRepository = productImageRepository;
     }
 
     public async Task<ApiResponse<ProductDetailDto>> GetProductBySlugAsync(string slug, CancellationToken cancellationToken = default)
@@ -142,7 +147,6 @@ public class StorefrontManager : IStorefrontService
 
     public async Task<ApiResponse<HomePageDto>> GetHomeDataAsync(CancellationToken cancellationToken = default)
     {
-        // Cache kontrol
         var cached = await _cacheService.GetAsync<HomePageDto>(HomeCacheKey, cancellationToken);
         if (cached is not null)
             return ApiResponse<HomePageDto>.Success(cached);
@@ -150,12 +154,8 @@ public class StorefrontManager : IStorefrontService
         var featuredProducts = await _productRepository.GetFeaturedProductCardsAsync(FeaturedProductsCount, cancellationToken);
         var popularCategories = await _categoryRepository.GetPopularCategoriesAsync(PopularCategoriesCount, cancellationToken);
 
-        // Her featured ürüne fake rating ekle
-        foreach (var p in featuredProducts)
-        {
-            p.Rating = GenerateFakeRating(p.Id);
-            InStockSituation(p);
-        }
+        // N+1 yerine tek batch sorgusu: tüm ürünlerin görsellerini tek round-trip'te çek
+        await EnrichProductCardsAsync(featuredProducts, cancellationToken);
 
         var response = new HomePageDto
         {
@@ -163,24 +163,54 @@ public class StorefrontManager : IStorefrontService
             PopularCategories = popularCategories
         };
 
-        // Cache'e yaz
         await _cacheService.SetAsync(HomeCacheKey, response, HomeTtl, cancellationToken);
 
         return ApiResponse<HomePageDto>.Success(response);
     }
-    private void InStockSituation(ProductCardDto productCardDto)
+
+    public async Task<ApiResponse<List<ProductCardDto>>> GetSimilarProductsAsync(string slug, int count, CancellationToken cancellationToken = default)
     {
-        if (productCardDto.StockQuantity > 0)
-            productCardDto.IsInStock = true;
-        else
-            productCardDto.IsInStock = false;
+        if (string.IsNullOrWhiteSpace(slug))
+            return ApiResponse<List<ProductCardDto>>.Fail("Slug boş olamaz.", 400);
+
+        if (count < 1) count = 8;
+        if (count > MaxSimilarProductsCount) count = MaxSimilarProductsCount;
+
+        var products = await _productRepository.GetSimilarProductCardsBySlugAsync(slug, count, cancellationToken);
+
+        await EnrichProductCardsAsync(products, cancellationToken);
+
+        return ApiResponse<List<ProductCardDto>>.Success(products);
     }
 
-    /// <summary>
-    /// Product ID'ye göre deterministik fake rating üretir.
-    /// Aynı ürün her zaman aynı değeri alır — cache'siz de tutarlı.
-    /// Average: 4.5–5.0 arası | Count: 30–100 arası
-    /// </summary>
+
+    private async Task EnrichProductCardsAsync(
+        List<ProductCardDto> products,
+        CancellationToken cancellationToken)
+    {
+        if (products.Count == 0) return;
+
+        var productIds = products.Select(p => p.Id).ToList();
+
+        // Tek batch sorgusu — tüm ürün ID'leri için görselleri bir kerede çek
+        var allImages = await _productImageRepository.GetAllAsync(
+            img => productIds.Contains(img.ProductId),
+            cancellationToken: cancellationToken);
+
+        // ProductId -> URL listesi eşlemesi (in-memory, O(n))
+        var imageMap = allImages
+            .GroupBy(img => img.ProductId)
+            .ToDictionary(g => g.Key, g => g.Select(img => img.Url).Where(u => u is not null).Cast<string>().ToList());
+
+        foreach (var product in products)
+        {
+            product.Rating = GenerateFakeRating(product.Id);
+            product.IsInStock = product.StockQuantity > 0;
+            product.ImageUrls = imageMap.TryGetValue(product.Id, out var urls) ? urls : [];
+        }
+    }
+
+
     private static RatingDto GenerateFakeRating(int productId)
     {
         var rng = new Random(productId * 31);
