@@ -7,4 +7,5 @@ public class CreateProductImageDto
     public List<IFormFile?> Files { get; set; } = new List<IFormFile?>();
     public bool IsCover { get; set; }
     public int ProductId { get; set; }
+    public string? AltText { get; set; }
 }

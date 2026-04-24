@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using AutoMapper;
+using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
@@ -57,13 +58,22 @@ public class ProductManager : IProductService
 
         var productIds = result.Results.Select(p => p.Id).ToList();
         var images = await _productImageRepository.GetAllWithAsNoTrackingAsync(
-            x => productIds.Contains(x.ProductId));
+            x => productIds.Contains(x.ProductId), cancellationToken: cancellationToken);
         var imageDict = images.GroupBy(i => i.ProductId)
-            .ToDictionary(g => g.Key, g => g.Select(i => i.Url).ToList());
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(i => new GetProductImageDto
+                {
+                    Id = i.Id,
+                    Url = i.Url,
+                    IsCover = i.IsCover,
+                    ProductId = i.ProductId,
+                    AltText = i.AltText
+                }).ToList());
         foreach (var product in result.Results)
         {
-            if (imageDict.TryGetValue(product.Id, out var urls))
-                product.ImageUrls = urls;
+            if (imageDict.TryGetValue(product.Id, out var productImages))
+                product.Images = productImages;
         }
 
         return ApiResponse<PagedResult<GetProductDto>>.Success(result);
@@ -71,6 +81,7 @@ public class ProductManager : IProductService
 
     public async Task<ApiResponse<GetProductDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
+        await _cacheService.RemoveAsync(ProductCacheKey(id), cancellationToken); // Cache temizleme (güncel olmayan veri olabilir)
         var cached = await _cacheService.GetAsync<GetProductDto>(ProductCacheKey(id), cancellationToken);
         if (cached is not null)
             return ApiResponse<GetProductDto>.Success(cached);
@@ -87,10 +98,20 @@ public class ProductManager : IProductService
 
         var images = await _productImageRepository.GetAllAsNoTrackingWithSelectorAsync(
             a => a.ProductId == id,
-            x => new ProductImage { Url = x.Url },
+            x => new ProductImage { Id = x.Id, Url = x.Url, AltText = x.AltText, IsCover = x.IsCover },
             cancellationToken);
-        result.ImageUrls = images.Select(i => i.Url).ToList();
-
+        List<GetProductImageDto> imageDtos = new List<GetProductImageDto>();
+        foreach (var image in images)
+        {
+            GetProductImageDto productImageDto = new GetProductImageDto();
+            productImageDto.Url = image.Url;
+            productImageDto.ProductId = id;
+            productImageDto.Id = image.Id;
+            productImageDto.AltText = image.AltText;
+            productImageDto.IsCover = image.IsCover;
+            imageDtos.Add(productImageDto);
+        }
+        result.Images = imageDtos;
         await _cacheService.SetAsync(ProductCacheKey(id), result, ProductCacheTtl, cancellationToken);
 
         return ApiResponse<GetProductDto>.Success(result);
@@ -101,6 +122,10 @@ public class ProductManager : IProductService
         var product = _mapper.Map<Product>(dto);
         product.Slug = dto.Name?.ToSlug() ?? string.Empty;
         product.IsActive = true;
+
+        // Slug uniqueness kontrolü
+        if (await _productRepository.IsSlugExistsAsync(product.Slug, cancellationToken: cancellationToken))
+            throw new ValidationException([$"'{product.Slug}' slug'ı zaten kullanılıyor. Farklı bir ürün adı deneyin."]);
 
         await _productRepository.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -141,6 +166,10 @@ public class ProductManager : IProductService
 
         _mapper.Map(dto, product);
         product.Slug = dto.Name?.ToSlug() ?? string.Empty;
+
+        // Slug uniqueness kontrolü (kendi slug'ını hariç tut)
+        if (await _productRepository.IsSlugExistsAsync(product.Slug, dto.Id, cancellationToken))
+            throw new ValidationException([$"'{product.Slug}' slug'ı zaten kullanılıyor. Farklı bir ürün adı deneyin."]);
 
         await _productRepository.UpdateAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

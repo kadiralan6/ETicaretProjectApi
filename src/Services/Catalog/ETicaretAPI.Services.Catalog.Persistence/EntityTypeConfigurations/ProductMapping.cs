@@ -29,6 +29,10 @@ public class ProductMapping : BaseEntityConfiguration<Product>
             .HasColumnName("description")
             .HasMaxLength(2000);
 
+        builder.Property(x => x.ShortDescription)
+            .HasColumnName("short_description")
+            .HasMaxLength(500);
+
         builder.Property(x => x.Price)
             .HasColumnName("price")
             .HasColumnType("decimal(18,2)");
@@ -49,6 +53,10 @@ public class ProductMapping : BaseEntityConfiguration<Product>
 
         builder.HasIndex(x => x.Slug)
             .IsUnique();
+
+        builder.HasIndex(x => new { x.CategoryId, x.IsActive });
+        builder.HasIndex(x => x.BrandId);
+        builder.HasIndex(x => new { x.IsFeatured, x.IsActive });
 
         builder.HasOne(x => x.Category)
             .WithMany()

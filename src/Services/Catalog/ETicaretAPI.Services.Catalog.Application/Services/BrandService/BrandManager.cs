@@ -67,6 +67,10 @@ public class BrandManager : IBrandService
         brand.Slug = dto.Name?.ToSlug() ?? string.Empty;
         brand.IsActive = true;
 
+        // Slug uniqueness kontrolü
+        if (await _brandRepository.IsSlugExistsAsync(brand.Slug, cancellationToken: cancellationToken))
+            throw new ValidationException([$"'{brand.Slug}' slug'ı zaten kullanılıyor. Farklı bir marka adı deneyin."]);
+
         await _brandRepository.AddAsync(brand, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -83,6 +87,10 @@ public class BrandManager : IBrandService
 
         _mapper.Map(dto, brand);
         brand.Slug = dto.Name.ToSlug();
+
+        // Slug uniqueness kontrolü (kendi slug'ını hariç tut)
+        if (await _brandRepository.IsSlugExistsAsync(brand.Slug, dto.Id, cancellationToken))
+            throw new ValidationException([$"'{brand.Slug}' slug'ı zaten kullanılıyor. Farklı bir marka adı deneyin."]);
 
         await _brandRepository.UpdateAsync(brand, cancellationToken);
 

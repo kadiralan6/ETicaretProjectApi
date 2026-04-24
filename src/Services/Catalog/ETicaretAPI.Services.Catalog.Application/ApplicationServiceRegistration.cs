@@ -6,6 +6,7 @@ using ETicaretAPI.Services.Catalog.Application.Services.BrandService;
 using ETicaretAPI.Services.Catalog.Application.Services.CategoryService;
 using ETicaretAPI.Services.Catalog.Application.Services.ProductService;
 using ETicaretAPI.Services.Catalog.Application.Services.ProductImageService;
+using ETicaretAPI.Services.Catalog.Application.Services.StorefrontService;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using ETicaretAPI.Common.Infrastructure.ApiService;
@@ -35,6 +36,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IBrandService, BrandManager>();
         services.AddScoped<IProductService, ProductManager>();
         services.AddScoped<IProductImageService, ProductImageManager>();
+        services.AddScoped<IStorefrontService, StorefrontManager>();
         services.AddScoped<IRestApiService, MicrosoftRestApiService>();
         return services;
     }

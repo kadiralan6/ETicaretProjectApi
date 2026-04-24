@@ -69,6 +69,10 @@ public class CategoryManager : ICategoryService
         var category = _mapper.Map<Category>(dto);
         category.Slug = dto.Name?.ToSlug() ?? string.Empty;
 
+        // Slug uniqueness kontrolü
+        if (await _categoryRepository.IsSlugExistsAsync(category.Slug, cancellationToken: cancellationToken))
+            throw new ValidationException([$"'{category.Slug}' slug'ı zaten kullanılıyor. Farklı bir kategori adı deneyin."]);
+
         await _categoryRepository.AddAsync(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -115,6 +119,10 @@ public class CategoryManager : ICategoryService
 
         _mapper.Map(dto, category);
         category.Slug = dto.Name.ToSlug();
+
+        // Slug uniqueness kontrolü (kendi slug'ını hariç tut)
+        if (await _categoryRepository.IsSlugExistsAsync(category.Slug, dto.Id, cancellationToken))
+            throw new ValidationException([$"'{category.Slug}' slug'ı zaten kullanılıyor. Farklı bir kategori adı deneyin."]);
 
         await _categoryRepository.UpdateAsync(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

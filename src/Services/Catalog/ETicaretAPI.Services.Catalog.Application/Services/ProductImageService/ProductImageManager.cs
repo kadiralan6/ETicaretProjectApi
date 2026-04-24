@@ -56,28 +56,38 @@ public class ProductImageManager : IProductImageService
         return ApiResponse<GetProductImageDto>.Success(result);
     }
 
-    public async Task<ApiResponse<GetProductImageDto>> CreateAsync(CreateProductImageDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<List<GetProductImageDto>>> CreateAsync(CreateProductImageDto dto, CancellationToken cancellationToken = default)
     {
-        var image = _mapper.Map<ProductImage>(dto);
+        var createdImages = new List<ProductImage>();
 
         if (dto.Files != null && dto.Files.Count > 0)
         {
-            var uploadedUrls = new List<string>();
             foreach (var file in dto.Files)
             {
                 if (file != null && file.Length > 0)
                 {
                     var uploadedUrl = await _imageUploadService.UploadImageAsync(file);
-                    uploadedUrls.Add(uploadedUrl);
+                    var image = new ProductImage
+                    {
+                        ProductId = dto.ProductId,
+                        IsCover = dto.IsCover,
+                        Url = uploadedUrl,
+                        AltText = dto.AltText
+                    };
+                    createdImages.Add(image);
                 }
             }
-            image.Url = uploadedUrls.FirstOrDefault(); // Set the first uploaded image as the main URL
+        }
+        else
+        {
+            var image = _mapper.Map<ProductImage>(dto);
+            createdImages.Add(image);
         }
 
-        if (image.IsCover)
+        if (dto.IsCover)
         {
             var otherCovers = await _productImageRepository.GetAllAsync(
-                x => x.ProductId == image.ProductId && x.IsCover, cancellationToken: cancellationToken);
+                x => x.ProductId == dto.ProductId && x.IsCover, cancellationToken: cancellationToken);
             foreach (var cover in otherCovers)
             {
                 cover.IsCover = false;
@@ -85,41 +95,63 @@ public class ProductImageManager : IProductImageService
             }
         }
 
-        await _productImageRepository.AddAsync(image, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveAsync(ProductCacheKey(image.ProductId), cancellationToken);
+        foreach (var image in createdImages)
+        {
+            await _productImageRepository.AddAsync(image, cancellationToken);
+        }
 
-        var result = _mapper.Map<GetProductImageDto>(image);
-        return ApiResponse<GetProductImageDto>.Success(result);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(dto.ProductId), cancellationToken);
+
+        var result = _mapper.Map<List<GetProductImageDto>>(createdImages);
+        return ApiResponse<List<GetProductImageDto>>.Success(result);
     }
 
-    public async Task<ApiResponse<GetProductImageDto>> UpdateAsync(UpdateProductImageDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<List<GetProductImageDto>>> UpdateAsync(UpdateProductImageDto dto, CancellationToken cancellationToken = default)
     {
-        var image = await _productImageRepository.GetAsync(x => x.Id == dto.Id, cancellationToken: cancellationToken);
+        var existingImage = await _productImageRepository.GetAsync(x => x.Id == dto.Id, cancellationToken: cancellationToken);
 
-        if (image is null)
-            throw new NotFoundException(nameof(ProductImage), dto.Id);
+        var savedImages = new List<ProductImage>();
 
-        _mapper.Map(dto, image);
-
-        if (dto.Files != null && dto.Files.Count > 0)
+        if (existingImage is null)
         {
-            var uploadedUrls = new List<string>();
-            foreach (var file in dto.Files)
+            if (dto.Files != null && dto.Files.Count > 0)
             {
-                if (file != null && file.Length > 0)
+                foreach (var file in dto.Files)
                 {
-                    var uploadedUrl = await _imageUploadService.UploadImageAsync(file);
-                    uploadedUrls.Add(uploadedUrl);
+                    if (file != null && file.Length > 0)
+                    {
+                        var uploadedUrl = await _imageUploadService.UploadImageAsync(file);
+                        savedImages.Add(new ProductImage
+                        {
+                            ProductId = dto.ProductId,
+                            Url = uploadedUrl
+                        });
+                    }
                 }
             }
-            image.Url = uploadedUrls.FirstOrDefault(); // Set the first uploaded image as the main URL
+            else
+            {
+                savedImages.Add(_mapper.Map<ProductImage>(dto));
+            }
+        }
+        else
+        {
+            _mapper.Map(dto, existingImage);
+            if (dto.Files != null && dto.Files.Count > 0)
+            {
+                var file = dto.Files.FirstOrDefault(f => f != null && f.Length > 0);
+                if (file != null)
+                    existingImage.Url = await _imageUploadService.UploadImageAsync(file);
+            }
+            savedImages.Add(existingImage);
         }
 
-        if (image.IsCover)
+        if (dto.IsCover)
         {
+            var savedIds = savedImages.Select(x => x.Id).ToList();
             var otherCovers = await _productImageRepository.GetAllAsync(
-                x => x.ProductId == image.ProductId && x.Id != image.Id && x.IsCover, cancellationToken: cancellationToken);
+                x => x.ProductId == dto.ProductId && !savedIds.Contains(x.Id) && x.IsCover, cancellationToken: cancellationToken);
             foreach (var cover in otherCovers)
             {
                 cover.IsCover = false;
@@ -127,12 +159,21 @@ public class ProductImageManager : IProductImageService
             }
         }
 
-        await _productImageRepository.UpdateAsync(image, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveAsync(ProductCacheKey(image.ProductId), cancellationToken);
+        if (existingImage is null)
+        {
+            foreach (var image in savedImages)
+                await _productImageRepository.AddAsync(image, cancellationToken);
+        }
+        else
+        {
+            await _productImageRepository.UpdateAsync(savedImages[0], cancellationToken);
+        }
 
-        var result = _mapper.Map<GetProductImageDto>(image);
-        return ApiResponse<GetProductImageDto>.Success(result);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(ProductCacheKey(dto.ProductId), cancellationToken);
+
+        var result = _mapper.Map<List<GetProductImageDto>>(savedImages);
+        return ApiResponse<List<GetProductImageDto>>.Success(result);
     }
 
     public async Task<ApiResponse<bool>> DeleteAsync(int id, CancellationToken cancellationToken = default)
