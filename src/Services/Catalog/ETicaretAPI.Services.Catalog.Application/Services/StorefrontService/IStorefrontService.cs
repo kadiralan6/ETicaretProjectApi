@@ -29,10 +29,10 @@ public interface IStorefrontService
     Task<ApiResponse<List<BreadcrumbItemDto>>> GetBreadcrumbBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ana sayfa verisini getirir — featured products + popular categories.
-    /// GET /api/home
+    /// Ana sayfa verisini sayfalı getirir — featured products (filtreli + sayfalı) + popular categories.
+    /// GET /api/home/getHomeData?page=1&pageSize=8&orderBy=CreatedAt
     /// </summary>
-    Task<ApiResponse<HomePageDto>> GetHomeDataAsync(CancellationToken cancellationToken = default);
+    Task<ApiResponse<HomePageDto>> GetHomeDataAsync(GetFeaturedProductsFilterDto filterDto, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Ürün detay sayfasının altına "Benzer Ürünler" bölümü için.

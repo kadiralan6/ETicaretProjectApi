@@ -1,9 +1,11 @@
 using ETicaretAPI.Common.Domain.Entities;
 using ETicaretAPI.Common.SharedLibrary.Enums.BasketEnums;
 
+namespace ETicaretAPI.Services.Basket.Domain.Entities;
+
 public class Coupon : Entity<int>
 {
-    public string? Code { get; set; }
+    public string Code { get; set; } = string.Empty;
     public CampaignTypeCommonEnum Type { get; set; }
     public decimal DiscountValue { get; set; }
     public decimal? MinimumOrderAmount { get; set; }
@@ -11,5 +13,7 @@ public class Coupon : Entity<int>
     public bool IsActive { get; set; }
     public int? UsageLimit { get; set; }
     public int UsageCount { get; set; }
-    public bool IsValid { get; set; }
+
+    // Navigation properties
+    public ICollection<Cart> Carts { get; set; } = new List<Cart>();
 }

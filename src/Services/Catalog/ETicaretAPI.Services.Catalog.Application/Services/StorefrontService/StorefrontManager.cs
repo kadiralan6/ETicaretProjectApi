@@ -1,8 +1,12 @@
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
+using ETicaretAPI.Services.Catalog.Application.Orders;
+using ETicaretAPI.Services.Catalog.Application.Predicates;
 using ETicaretAPI.Services.Catalog.Application.Repositories;
+using ETicaretAPI.Services.Catalog.Application.Selectors;
 using ETicaretAPI.Services.Catalog.Domain.DTOs.StorefrontDtos;
+using ETicaretAPI.Services.Catalog.Domain.Entities;
 
 namespace ETicaretAPI.Services.Catalog.Application.Services.StorefrontService;
 
@@ -13,21 +17,20 @@ public class StorefrontManager : IStorefrontService
     private readonly IProductImageRepository _productImageRepository;
     private readonly ICacheService _cacheService;
 
-    // Cache key patterns — slug bazlı
+    // Cache key patterns — slug/filtre bazlı
     private static string ProductDetailCacheKey(string slug) => $"storefront:product:{slug}";
     private static string CategoryProductsCacheKey(string slug, int page, int pageSize) => $"storefront:category:{slug}:p{page}:s{pageSize}";
     private static string BreadcrumbCacheKey(string slug) => $"storefront:breadcrumb:{slug}";
-    private const string HomeCacheKey = "storefront:home";
+    private static string HomeCacheKey(GetFeaturedProductsFilterDto f) =>
+        $"storefront:home:p{f.Page}:s{f.PageSize}:o{(int)f.OrderBy}:t{(int)f.OrderType}:c{f.CategoryId}:b{f.BrandId}:min{f.MinPrice}:max{f.MaxPrice}:q{f.Search}";
 
     // Cache TTL'leri
     private static readonly TimeSpan ProductDetailTtl = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan CategoryProductsTtl = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan BreadcrumbTtl = TimeSpan.FromMinutes(60);
     private static readonly TimeSpan HomeTtl = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan SimilarProductsTtl = TimeSpan.FromMinutes(15);
 
     // Varsayılan limitler
-    private const int FeaturedProductsCount = 8;
     private const int PopularCategoriesCount = 6;
     private const int MaxSimilarProductsCount = 20;
 
@@ -145,25 +148,33 @@ public class StorefrontManager : IStorefrontService
         return ApiResponse<List<BreadcrumbItemDto>>.Success(breadcrumb);
     }
 
-    public async Task<ApiResponse<HomePageDto>> GetHomeDataAsync(CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<HomePageDto>> GetHomeDataAsync(GetFeaturedProductsFilterDto filterDto, CancellationToken cancellationToken = default)
     {
-        var cached = await _cacheService.GetAsync<HomePageDto>(HomeCacheKey, cancellationToken);
-        if (cached is not null)
-            return ApiResponse<HomePageDto>.Success(cached);
+        if (filterDto.Page < 1) filterDto.Page = 1;
+        if (filterDto.PageSize < 1) filterDto.PageSize = 8;
+        if (filterDto.PageSize > 50) filterDto.PageSize = 50;
 
-        var featuredProducts = await _productRepository.GetFeaturedProductCardsAsync(FeaturedProductsCount, cancellationToken);
+        var predicate = FeaturedProductPredicate.GetExpression(filterDto);
+        var orders = FeaturedProductOrder.GetOrder(filterDto.OrderBy, filterDto.OrderType);
+        var selector = FeaturedProductSelector.GetCardSelector();
+
+        var pagedResult = await _productRepository.GetAllAsNoTrackingWithPaginationAsync(filterDto.Page, filterDto.PageSize, predicate, orders, selector, cancellationToken);
+
+        var productCards = pagedResult.Results.Select(MapToProductCard).ToList();
+
+        // Görseller ve rating — tek batch sorgusu
+        await EnrichProductCardsAsync(productCards, cancellationToken);
+
         var popularCategories = await _categoryRepository.GetPopularCategoriesAsync(PopularCategoriesCount, cancellationToken);
-
-        // N+1 yerine tek batch sorgusu: tüm ürünlerin görsellerini tek round-trip'te çek
-        await EnrichProductCardsAsync(featuredProducts, cancellationToken);
 
         var response = new HomePageDto
         {
-            FeaturedProducts = featuredProducts,
-            PopularCategories = popularCategories
+            FeaturedProducts = productCards,
+            PopularCategories = popularCategories,
+            Page = pagedResult.CurrentPage,
+            PageSize = pagedResult.PageSize,
+            TotalCount = pagedResult.RowCount
         };
-
-        await _cacheService.SetAsync(HomeCacheKey, response, HomeTtl, cancellationToken);
 
         return ApiResponse<HomePageDto>.Success(response);
     }
@@ -183,6 +194,24 @@ public class StorefrontManager : IStorefrontService
         return ApiResponse<List<ProductCardDto>>.Success(products);
     }
 
+
+    private static ProductCardDto MapToProductCard(Product p) => new()
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Slug = p.Slug,
+        ShortDescription = p.ShortDescription,
+        Price = p.Price,
+        StockQuantity = p.StockQuantity,
+        IsActive = p.IsActive,
+        CategoryName = p.Category?.Name,
+        CategorySlug = p.Category?.Slug,
+        CategoryPath = p.Category?.ParentCategory is not null
+            ? $"/kategori/{p.Category.ParentCategory.Slug}/{p.Category.Slug}"
+            : p.Category?.Slug is not null ? $"/kategori/{p.Category.Slug}" : null,
+        BrandName = p.Brand?.Name,
+        BrandSlug = p.Brand?.Slug
+    };
 
     private async Task EnrichProductCardsAsync(
         List<ProductCardDto> products,

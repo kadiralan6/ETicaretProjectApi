@@ -19,7 +19,7 @@ builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 
 // Infrastructure (Cloudinary image upload)
-builder.Services.AddCatalogServices(builder.Configuration);
+builder.Services.AddCatalogServices();
 
 // Common Infrastructure (Redis, RabbitMQ, HttpClient)
 builder.Services.AddCommonInfrastructure(builder.Configuration);

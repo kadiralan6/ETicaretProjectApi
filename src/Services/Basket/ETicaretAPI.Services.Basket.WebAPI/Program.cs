@@ -1,6 +1,6 @@
 using ETicaretAPI.Common.Infrastructure;
 using ETicaretAPI.Services.Basket.Application;
-using ETicaretAPI.Services.Basket.Infrastructure;
+using ETicaretAPI.Services.Basket.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +11,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Infrastructure (DbContext)
-builder.Services.AddBasketServices(builder.Configuration);
+// Persistence (DbContext + Repositories + UnitOfWork)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+builder.Services.AddPersistenceServices(builder.Configuration);
 
-// Application (Services + IRestApiService)
+// Application (Services + AutoMapper + IRestApiService)
 builder.Services.AddApplicationServices();
 
 // Common Infrastructure (Redis, RabbitMQ, HttpClient)
