@@ -50,4 +50,10 @@ public interface ICartService
     /// Sepeti tamamen temizler (tüm ürünleri kaldırır).
     /// </summary>
     Task<ApiResponse<bool>> ClearCartAsync(int userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sepet ikonundaki badge için toplam ürün adedini ve çeşit sayısını döner.
+    /// Tam sepet yüklemez — hafif sorgu.
+    /// </summary>
+    Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(int userId, CancellationToken cancellationToken = default);
 }

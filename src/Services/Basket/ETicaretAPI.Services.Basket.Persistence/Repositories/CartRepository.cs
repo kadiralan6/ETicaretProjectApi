@@ -28,4 +28,22 @@ public class CartRepository : EfEntityRepositoryBase<Cart, BasketDbContext>, ICa
             .Include(c => c.Coupon)
             .FirstOrDefaultAsync(c => c.Id == cartId && !c.IsDeleted, cancellationToken);
     }
+
+    public async Task<(int TotalQuantity, int UniqueItemCount)> GetItemCountByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var result = await _context.Carts
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && !c.IsDeleted)
+            .Select(c => new
+            {
+                TotalQuantity = c.Items
+                    .Where(i => !i.IsDeleted)
+                    .Sum(i => (int?)i.Quantity) ?? 0,
+                UniqueItemCount = c.Items
+                    .Count(i => !i.IsDeleted)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return result is null ? (0, 0) : (result.TotalQuantity, result.UniqueItemCount);
+    }
 }

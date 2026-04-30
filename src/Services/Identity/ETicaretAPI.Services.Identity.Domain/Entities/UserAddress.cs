@@ -9,5 +9,6 @@ public class UserAddress : Entity<int>
     public string? City { get; set; }
     public string? FullAddress { get; set; }
 
-    public AppUser? User { get; set; }
+    // Navigation
+    public User? User { get; set; }
 }

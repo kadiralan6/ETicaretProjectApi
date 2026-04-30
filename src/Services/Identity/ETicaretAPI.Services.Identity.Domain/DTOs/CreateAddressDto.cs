@@ -2,6 +2,7 @@ namespace ETicaretAPI.Services.Identity.Domain.DTOs;
 
 public class CreateAddressDto
 {
+    public int UserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;

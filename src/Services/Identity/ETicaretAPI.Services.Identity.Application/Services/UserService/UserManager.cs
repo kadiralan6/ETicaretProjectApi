@@ -1,94 +1,94 @@
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Responses;
+using ETicaretAPI.Common.Domain.Interfaces;
 using ETicaretAPI.Services.Identity.Domain.DTOs;
 using ETicaretAPI.Services.Identity.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+using ETicaretAPI.Services.Identity.Domain.Interfaces.Repositories;
+using Microsoft.AspNetCore.Identity;
 
 namespace ETicaretAPI.Services.Identity.Application.Services.UserService;
 
 public class UserManager : IUserService
 {
-    private readonly Microsoft.AspNetCore.Identity.UserManager<AppUser> _identityUserManager;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPasswordHasher<User> _passwordHasher;
 
-    public UserManager(Microsoft.AspNetCore.Identity.UserManager<AppUser> identityUserManager)
+    public UserManager(
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        IPasswordHasher<User> passwordHasher)
     {
-        _identityUserManager = identityUserManager;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<ApiResponse<UserDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(id.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", id);
+        var user = await _userRepository.GetWithAsNoTrackingAsync(u => u.Id == id && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", id);
 
-        var roles = await _identityUserManager.GetRolesAsync(user);
-        return ApiResponse<UserDto>.Success(MapToDto(user, roles));
+        return ApiResponse<UserDto>.Success(MapToDto(user));
     }
 
     public async Task<ApiResponse<List<UserDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var users = await _identityUserManager.Users.ToListAsync(cancellationToken);
-        var dtos = new List<UserDto>();
-
-        foreach (var user in users)
-        {
-            var roles = await _identityUserManager.GetRolesAsync(user);
-            dtos.Add(MapToDto(user, roles));
-        }
-
+        var users = await _userRepository.GetAllWithAsNoTrackingAsync(u => !u.IsDeleted, cancellationToken: cancellationToken);
+        var dtos = users.Select(MapToDto).ToList();
         return ApiResponse<List<UserDto>>.Success(dtos);
     }
 
     public async Task<ApiResponse<UserDto>> UpdateAsync(int userId, UpdateUserDto dto, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(userId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", userId);
+        var user = await _userRepository.GetAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", userId);
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
+        user.PhoneNumber = dto.PhoneNumber;
 
-        var result = await _identityUserManager.UpdateAsync(user);
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new ValidationException(new List<string> { errors });
-        }
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var roles = await _identityUserManager.GetRolesAsync(user);
-        return ApiResponse<UserDto>.Success(MapToDto(user, roles));
+        return ApiResponse<UserDto>.Success(MapToDto(user));
     }
 
     public async Task<ApiResponse> ChangePasswordAsync(int userId, ChangePasswordDto dto, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(userId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", userId);
+        var user = await _userRepository.GetAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", userId);
 
-        var result = await _identityUserManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new ValidationException(new List<string> { errors });
-        }
+        var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash!, dto.CurrentPassword);
+        if (verifyResult == PasswordVerificationResult.Failed)
+            throw new ValidationException(["Mevcut şifre yanlış."]);
+
+        if (dto.NewPassword != dto.ConfirmNewPassword)
+            throw new ValidationException(["Yeni şifreler eşleşmiyor."]);
+
+        user.PasswordHash = _passwordHasher.HashPassword(user, dto.NewPassword);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse.Success();
     }
 
     public async Task<ApiResponse> AssignRoleAsync(AssignRoleDto dto, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(dto.UserId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", dto.UserId);
+        var user = await _userRepository.GetAsync(u => u.Id == dto.UserId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", dto.UserId);
 
-        if (!await _identityUserManager.IsInRoleAsync(user, dto.RoleName))
+        var roles = ParseRoles(user.Roles);
+        if (!roles.Contains(dto.RoleName, StringComparer.OrdinalIgnoreCase))
         {
-            var result = await _identityUserManager.AddToRoleAsync(user, dto.RoleName);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new ValidationException(new List<string> { errors });
-            }
+            roles.Add(dto.RoleName);
+            user.Roles = string.Join(",", roles);
+            await _userRepository.UpdateAsync(user, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return ApiResponse.Success();
@@ -96,15 +96,16 @@ public class UserManager : IUserService
 
     public async Task<ApiResponse> RemoveRoleAsync(int userId, string roleName, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(userId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", userId);
+        var user = await _userRepository.GetAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", userId);
 
-        var result = await _identityUserManager.RemoveFromRoleAsync(user, roleName);
-        if (!result.Succeeded)
+        var roles = ParseRoles(user.Roles);
+        if (roles.Remove(roleName))
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new ValidationException(new List<string> { errors });
+            user.Roles = string.Join(",", roles);
+            await _userRepository.UpdateAsync(user, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return ApiResponse.Success();
@@ -112,20 +113,26 @@ public class UserManager : IUserService
 
     public async Task<ApiResponse<List<string>>> GetRolesAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var user = await _identityUserManager.FindByIdAsync(userId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", userId);
+        var user = await _userRepository.GetWithAsNoTrackingAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", userId);
 
-        var roles = await _identityUserManager.GetRolesAsync(user);
-        return ApiResponse<List<string>>.Success(roles.ToList());
+        return ApiResponse<List<string>>.Success(ParseRoles(user.Roles));
     }
 
-    private static UserDto MapToDto(AppUser user, IList<string> roles) => new()
+    private static UserDto MapToDto(User user) => new()
     {
         Id = user.Id,
         Email = user.Email ?? string.Empty,
+        UserName = user.UserName ?? string.Empty,
         FirstName = user.FirstName ?? string.Empty,
         LastName = user.LastName ?? string.Empty,
-        Roles = roles.ToList()
+        IsActive = user.IsActive,
+        Roles = ParseRoles(user.Roles)
     };
+
+    private static List<string> ParseRoles(string roles) =>
+        string.IsNullOrWhiteSpace(roles)
+            ? ["User"]
+            : [.. roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
 }

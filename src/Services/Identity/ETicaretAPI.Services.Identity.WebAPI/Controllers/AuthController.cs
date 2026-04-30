@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ETicaretAPI.Services.Identity.WebAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/identity/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("refresh-token")]
+    [HttpPost("refreshToken")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto, CancellationToken cancellationToken = default)
     {
         var result = await _authService.RefreshTokenAsync(dto, cancellationToken);

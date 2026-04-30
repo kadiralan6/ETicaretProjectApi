@@ -231,6 +231,20 @@ public class CartManager : ICartService
         return ApiResponse<bool>.Success(true);
     }
 
+    public async Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var (totalQuantity, uniqueItemCount) = await _cartRepository.GetItemCountByUserIdAsync(userId, cancellationToken);
+
+        var result = new GetCartItemCountDto
+        {
+            UserId = userId,
+            TotalQuantity = totalQuantity,
+            UniqueItemCount = uniqueItemCount
+        };
+
+        return ApiResponse<GetCartItemCountDto>.Success(result);
+    }
+
     // -------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------

@@ -21,8 +21,13 @@ public class AddressManager : IAddressService
     public async Task<ApiResponse<List<AddressDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var addresses = await _addressRepository.GetAllWithAsNoTrackingAsync(cancellationToken: cancellationToken);
-        var result = addresses.Select(MapToDto).ToList();
-        return ApiResponse<List<AddressDto>>.Success(result);
+        return ApiResponse<List<AddressDto>>.Success(addresses.Select(MapToDto).ToList());
+    }
+
+    public async Task<ApiResponse<List<AddressDto>>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var addresses = await _addressRepository.GetByUserIdAsync(userId, cancellationToken);
+        return ApiResponse<List<AddressDto>>.Success(addresses.Select(MapToDto).ToList());
     }
 
     public async Task<ApiResponse<AddressDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -37,8 +42,13 @@ public class AddressManager : IAddressService
 
     public async Task<ApiResponse<AddressDto>> CreateAsync(CreateAddressDto dto, CancellationToken cancellationToken = default)
     {
+        // Kullanıcıya ait varsayılan adres varsa ve yeni adres varsayılan yapılıyorsa, eskisini kaldır
+        if (dto.IsDefault)
+            await ClearDefaultAddressAsync(dto.UserId, cancellationToken);
+
         var address = new Address
         {
+            UserId = dto.UserId,
             Title = dto.Title,
             FullName = dto.FullName,
             PhoneNumber = dto.PhoneNumber,
@@ -61,6 +71,10 @@ public class AddressManager : IAddressService
 
         if (address is null)
             throw new NotFoundException(nameof(Address), id);
+
+        // Varsayılan yapılıyorsa aynı kullanıcının diğer adreslerini güncelle
+        if (dto.IsDefault && !address.IsDefault)
+            await ClearDefaultAddressAsync(address.UserId, cancellationToken);
 
         address.Title = dto.Title;
         address.FullName = dto.FullName;
@@ -90,9 +104,25 @@ public class AddressManager : IAddressService
         return ApiResponse<bool>.Success(true);
     }
 
+    private async Task ClearDefaultAddressAsync(int userId, CancellationToken cancellationToken)
+    {
+        var defaultAddress = await _addressRepository.GetDefaultByUserIdAsync(userId, cancellationToken);
+        if (defaultAddress is null)
+            return;
+
+        // Tracked entity gerektiği için GetAsync kullan
+        var tracked = await _addressRepository.GetAsync(a => a.Id == defaultAddress.Id, cancellationToken: cancellationToken);
+        if (tracked is null)
+            return;
+
+        tracked.IsDefault = false;
+        await _addressRepository.UpdateAsync(tracked, cancellationToken);
+    }
+
     private static AddressDto MapToDto(Address address) => new()
     {
         Id = address.Id,
+        UserId = address.UserId,
         Title = address.Title ?? string.Empty,
         FullName = address.FullName ?? string.Empty,
         PhoneNumber = address.PhoneNumber ?? string.Empty,

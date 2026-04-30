@@ -14,4 +14,10 @@ public interface ICartRepository : IEntityRepository<Cart>
     /// Sepet ID ile sepeti items ve coupon dahil getirir.
     /// </summary>
     Task<Cart?> GetCartWithItemsAsync(int cartId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kullanıcının sepetindeki toplam ürün adedini ve çeşit sayısını döner.
+    /// Tam sepet yüklenmez — ikon badge için optimize edilmiş sorgu.
+    /// </summary>
+    Task<(int TotalQuantity, int UniqueItemCount)> GetItemCountByUserIdAsync(int userId, CancellationToken cancellationToken = default);
 }

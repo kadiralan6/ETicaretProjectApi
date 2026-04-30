@@ -36,7 +36,7 @@
                 "Put",
                 "Delete"
             ],
-            "DownstreamPathTemplate": "/api/{everything}",
+            "DownstreamPathTemplate": "/api/identity/{everything}",
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {

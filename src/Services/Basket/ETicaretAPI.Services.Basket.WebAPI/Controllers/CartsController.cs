@@ -15,6 +15,13 @@ public class CartsController : ControllerBase
         _cartService = cartService;
     }
 
+    [HttpGet("getItemCount/{userId:int}")]
+    public async Task<IActionResult> GetItemCount(int userId, CancellationToken cancellationToken = default)
+    {
+        var result = await _cartService.GetItemCountAsync(userId, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpGet("getOrCreate/{userId:int}")]
     public async Task<IActionResult> GetOrCreate(int userId, CancellationToken cancellationToken = default)
     {
