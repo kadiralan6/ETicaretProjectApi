@@ -9,8 +9,9 @@ public class BasketDbContext : DbContext
 {
     public BasketDbContext(DbContextOptions<BasketDbContext> options) : base(options) { }
 
-    public DbSet<Cart> Carts { get; set; }
-    public DbSet<CartItem> CartItems { get; set; }
+    public DbSet<CartItems> CartItems { get; set; }
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<Coupon> Coupons { get; set; }
     public DbSet<Campaign> Campaigns { get; set; }
 

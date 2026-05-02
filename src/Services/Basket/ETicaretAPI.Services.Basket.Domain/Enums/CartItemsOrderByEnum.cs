@@ -1,8 +1,8 @@
 namespace ETicaretAPI.Services.Basket.Domain.Enums;
 
-public enum CartOrderByEnum
+public enum CartItemsOrderByEnum
 {
     CreatedAt,
     ModifiedAt,
-    Total
+    Quantity
 }

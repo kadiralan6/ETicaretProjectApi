@@ -5,9 +5,9 @@ using ETicaretAPI.Services.Basket.Persistence.Context;
 
 namespace ETicaretAPI.Services.Basket.Persistence.Repositories;
 
-public class CartItemRepository : EfEntityRepositoryBase<CartItem, BasketDbContext>, ICartItemRepository
+public class OrderItemRepository : EfEntityRepositoryBase<OrderItem, BasketDbContext>, IOrderItemRepository
 {
-    public CartItemRepository(BasketDbContext context) : base(context)
+    public OrderItemRepository(BasketDbContext context) : base(context)
     {
     }
 }

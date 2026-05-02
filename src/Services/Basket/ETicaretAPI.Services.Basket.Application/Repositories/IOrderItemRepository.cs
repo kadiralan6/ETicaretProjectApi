@@ -3,6 +3,6 @@ using ETicaretAPI.Services.Basket.Domain.Entities;
 
 namespace ETicaretAPI.Services.Basket.Application.Repositories;
 
-public interface ICartItemRepository : IEntityRepository<CartItem>
+public interface IOrderItemRepository : IEntityRepository<OrderItem>
 {
 }

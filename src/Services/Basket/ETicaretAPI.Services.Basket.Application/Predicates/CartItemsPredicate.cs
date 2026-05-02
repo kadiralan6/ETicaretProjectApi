@@ -5,11 +5,11 @@ using ETicaretAPI.Services.Basket.Domain.Entities;
 
 namespace ETicaretAPI.Services.Basket.Application.Predicates;
 
-public static class CartPredicate
+public static class CartItemsPredicate
 {
-    public static Expression<Func<Cart, bool>> GetExpression(GetCartForAdminFilterDto filterDto)
+    public static Expression<Func<CartItems, bool>> GetExpression(GetCartForAdminFilterDto filterDto)
     {
-        var predicate = PredicateBuilder.True<Cart>();
+        var predicate = PredicateBuilder.True<CartItems>();
 
         if (filterDto.UserId.HasValue)
             predicate = predicate.And(c => c.UserId == filterDto.UserId.Value);
@@ -17,11 +17,11 @@ public static class CartPredicate
         if (filterDto.CouponId.HasValue)
             predicate = predicate.And(c => c.CouponId == filterDto.CouponId.Value);
 
-        if (filterDto.MinTotal.HasValue)
-            predicate = predicate.And(c => c.Total >= filterDto.MinTotal.Value);
+        if (filterDto.ProductId.HasValue)
+            predicate = predicate.And(c => c.ProductId == filterDto.ProductId.Value);
 
-        if (filterDto.MaxTotal.HasValue)
-            predicate = predicate.And(c => c.Total <= filterDto.MaxTotal.Value);
+        if (!string.IsNullOrWhiteSpace(filterDto.OrderNumber))
+            predicate = predicate.And(c => c.OrderNumber == filterDto.OrderNumber);
 
         return predicate;
     }

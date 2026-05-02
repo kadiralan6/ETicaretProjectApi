@@ -5,8 +5,10 @@ using ETicaretAPI.Common.Infrastructure.ApiService;
 using ETicaretAPI.Common.Infrastructure.ApiService.Rest.Microsoft;
 using ETicaretAPI.Common.Infrastructure.Mappings;
 using ETicaretAPI.Services.Basket.Application.Services.CampaignService;
-using ETicaretAPI.Services.Basket.Application.Services.CartService;
+using ETicaretAPI.Services.Basket.Application.Services.CartItemsService;
 using ETicaretAPI.Services.Basket.Application.Services.CouponService;
+using ETicaretAPI.Services.Basket.Application.Services.OrderItemService;
+using ETicaretAPI.Services.Basket.Application.Services.OrderService;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ETicaretAPI.Services.Basket.Application;
@@ -23,9 +25,11 @@ public static class ApplicationServiceRegistration
         });
 
         // Services
-        services.AddScoped<ICartService, CartManager>();
+        services.AddScoped<ICartItemsService, CartItemsManager>();
         services.AddScoped<ICouponService, CouponManager>();
         services.AddScoped<ICampaignService, CampaignManager>();
+        services.AddScoped<IOrderService, OrderManager>();
+        services.AddScoped<IOrderItemService, OrderItemManager>();
 
         services.AddSingleton<ICacheService, RedisCacheManager>();
         services.AddSingleton<IEventBus, RabbitMQEventBusManager>();

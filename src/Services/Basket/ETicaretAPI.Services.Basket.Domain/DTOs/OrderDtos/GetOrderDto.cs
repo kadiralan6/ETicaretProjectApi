@@ -1,0 +1,14 @@
+using ETicaretAPI.Common.Domain.Entities;
+
+namespace ETicaretAPI.Services.Basket.Domain.DTOs.OrderDtos;
+
+public class GetOrderDto : BaseDto
+{
+    public int UserId { get; set; }
+    public int ProductId { get; set; }
+    public decimal Price { get; set; }
+    public decimal TotalPrice { get; set; }
+    public int Quantity { get; set; }
+    public string? OrderNumber { get; set; }
+    public int? CouponId { get; set; }
+}

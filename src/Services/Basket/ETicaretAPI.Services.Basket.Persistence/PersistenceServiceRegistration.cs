@@ -22,10 +22,11 @@ public static class PersistenceServiceRegistration
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        services.AddScoped<ICartRepository, CartRepository>();
-        services.AddScoped<ICartItemRepository, CartItemRepository>();
+        services.AddScoped<ICartItemsRepository, CartItemsRepository>();
         services.AddScoped<ICouponRepository, CouponRepository>();
         services.AddScoped<ICampaignRepository, CampaignRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderItemRepository, OrderItemRepository>();
 
         return services;
     }

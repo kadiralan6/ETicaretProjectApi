@@ -15,5 +15,5 @@ public class Coupon : Entity<int>
     public int UsageCount { get; set; }
 
     // Navigation properties
-    public ICollection<Cart> Carts { get; set; } = new List<Cart>();
+    public ICollection<CartItems> CartItems { get; set; } = new List<CartItems>();
 }
