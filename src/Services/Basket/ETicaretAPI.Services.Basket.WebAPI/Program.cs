@@ -7,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers
 builder.Services.AddControllers();
 
+// HttpContext accessor (required for ICurrentUserService / CurrentUserProvider)
+builder.Services.AddHttpContextAccessor();
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -25,7 +25,7 @@ public class CartItemsController : ControllerBase
     [HttpGet("getByUserId/{userId:int}")]
     public async Task<IActionResult> GetByUserId(int userId, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.GetByUserIdAsync(userId, cancellationToken);
+        var result = await _cartItemsService.GetBasketByUserIdAsync(userId, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -39,7 +39,7 @@ public class CartItemsController : ControllerBase
     [HttpPost("addItem")]
     public async Task<IActionResult> AddItem([FromBody] AddCartItemDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.AddItemAsync(dto.UserId, dto, cancellationToken);
+        var result = await _cartItemsService.AddItemAsync(dto, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 

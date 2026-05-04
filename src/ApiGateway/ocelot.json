@@ -126,7 +126,7 @@
                 "Put",
                 "Delete"
             ],
-            "DownstreamPathTemplate": "/api/{everything}",
+            "DownstreamPathTemplate": "/api/basket/{everything}",
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {

@@ -66,6 +66,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddApplicationServices();
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddCommonInfrastructure(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddCors(options =>
 {

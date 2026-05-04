@@ -19,6 +19,7 @@ builder.Services.AddSearchInfrastructure(builder.Configuration);
 builder.Services.AddCommonInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
 
 // CORS
 builder.Services.AddCors(options =>

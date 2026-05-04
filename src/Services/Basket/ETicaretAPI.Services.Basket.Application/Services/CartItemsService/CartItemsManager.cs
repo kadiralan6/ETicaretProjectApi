@@ -1,8 +1,13 @@
 using AutoMapper;
+using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
 using ETicaretAPI.Common.Application.Exceptions;
+using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Domain.Interfaces;
+using ETicaretAPI.Common.Infrastructure.ApiService;
+using ETicaretAPI.Common.Infrastructure.Configuration;
+using ETicaretAPI.Services.Basket.Application.DTOs;
 using ETicaretAPI.Services.Basket.Application.Orders;
 using ETicaretAPI.Services.Basket.Application.Predicates;
 using ETicaretAPI.Services.Basket.Application.Repositories;
@@ -17,24 +22,64 @@ public class CartItemsManager : ICartItemsService
     private readonly ICouponRepository _couponRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly IRestApiService _restApiService;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly string _catalogServiceUrl;
 
     public CartItemsManager(
         ICartItemsRepository cartItemsRepository,
         ICouponRepository couponRepository,
         IUnitOfWork unitOfWork,
-        IMapper mapper)
+        IMapper mapper,
+        IRestApiService restApiService,
+        ICurrentUserService currentUserService)
     {
         _cartItemsRepository = cartItemsRepository;
         _couponRepository = couponRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _restApiService = restApiService;
+        _currentUserService = currentUserService;
+        _catalogServiceUrl = CoreConfig.GetValue<string>("ExternalApi:CatalogApi:Url");
     }
 
-    public async Task<ApiResponse<List<GetCartItemDto>>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var items = await _cartItemsRepository.GetByUserIdAsync(userId, cancellationToken);
-        var result = _mapper.Map<List<GetCartItemDto>>(items);
-        return ApiResponse<List<GetCartItemDto>>.Success(result);
+        var cartItems = await _cartItemsRepository.GetByUserIdAsync(userId, cancellationToken);
+
+        if (cartItems is null || cartItems.Count == 0)
+            return ApiResponse<List<GetBasketItemDto>>.Success([]);
+
+        var basketItems = new List<GetBasketItemDto>();
+
+        foreach (var cartItem in cartItems)
+        {
+            var endpoint = $"{_catalogServiceUrl}/api/catalog/products/getById/{cartItem.ProductId}";
+            var product = await _restApiService.GetDataResultAsync<GetCatalogProductDto>(endpoint);
+
+            var basketItem = new GetBasketItemDto
+            {
+                CartItemId = cartItem.Id,
+                UserId = cartItem.UserId,
+                ProductId = cartItem.ProductId,
+                Quantity = cartItem.Quantity,
+                CouponId = cartItem.CouponId,
+                OrderNumber = cartItem.OrderNumber,
+                ProductName = product?.Name,
+                ProductCode = product?.Code,
+                ProductSlug = product?.Slug,
+                UnitPrice = product?.Price ?? 0m,
+                StockQuantity = product?.StockQuantity ?? 0,
+                IsActive = product?.IsActive ?? false,
+                CategoryName = product?.CategoryName,
+                BrandName = product?.BrandName,
+                Images = product?.Images ?? []
+            };
+
+            basketItems.Add(basketItem);
+        }
+
+        return ApiResponse<List<GetBasketItemDto>>.Success(basketItems);
     }
 
     public async Task<ApiResponse<PagedResult<GetCartItemDto>>> GetCartItemsFilterAsync(GetCartForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -49,17 +94,20 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<PagedResult<GetCartItemDto>>.Success(result);
     }
 
-    public async Task<ApiResponse<GetCartItemDto>> AddItemAsync(int userId, AddCartItemDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<GetCartItemDto>> AddItemAsync(AddCartItemDto dto, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.UserId is null)
+            return ApiResponse<GetCartItemDto>.Fail("Kullanıcı kimliği doğrulanamadı.", 401);
+
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<GetCartItemDto>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var existingItem = await _cartItemsRepository.GetByUserAndProductAsync(userId, dto.ProductId, cancellationToken);
 
         if (existingItem is not null)
         {
             existingItem.Quantity += dto.Quantity;
-            existingItem.CouponId = dto.CouponId;
-            existingItem.OrderNumber = dto.OrderNumber;
             await _cartItemsRepository.UpdateAsync(existingItem, cancellationToken);
-
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var existingResult = _mapper.Map<GetCartItemDto>(existingItem);
