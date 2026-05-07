@@ -7,21 +7,21 @@ namespace ETicaretAPI.Services.Basket.Application.Services.CartItemsService;
 
 public interface ICartItemsService
 {
-    Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(int userId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(CancellationToken cancellationToken = default);
 
     Task<ApiResponse<PagedResult<GetCartItemDto>>> GetCartItemsFilterAsync(GetCartForAdminFilterDto filterDto, CancellationToken cancellationToken = default);
 
     Task<ApiResponse<GetCartItemDto>> AddItemAsync(AddCartItemDto dto, CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<GetCartItemDto>> UpdateItemAsync(int userId, UpdateCartItemDto dto, CancellationToken cancellationToken = default);
+    Task<ApiResponse<GetCartItemDto>> UpdateItemAsync(UpdateCartItemDto dto, CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<bool>> RemoveItemAsync(int userId, int cartItemId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> RemoveItemAsync(int cartItemId, CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<bool>> ApplyCouponAsync(int userId, ApplyCouponDto dto, CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> ApplyCouponAsync(ApplyCouponDto dto, CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<bool>> RemoveCouponAsync(int userId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> RemoveCouponAsync(CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<bool>> ClearCartAsync(int userId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> ClearCartAsync(CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(int userId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(CancellationToken cancellationToken = default);
 }

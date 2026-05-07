@@ -15,17 +15,17 @@ public class CartItemsController : ControllerBase
         _cartItemsService = cartItemsService;
     }
 
-    [HttpGet("getItemCount/{userId:int}")]
-    public async Task<IActionResult> GetItemCount(int userId, CancellationToken cancellationToken = default)
+    [HttpGet("getItemCount")]
+    public async Task<IActionResult> GetItemCount(CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.GetItemCountAsync(userId, cancellationToken);
+        var result = await _cartItemsService.GetItemCountAsync(cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpGet("getByUserId/{userId:int}")]
-    public async Task<IActionResult> GetByUserId(int userId, CancellationToken cancellationToken = default)
+    [HttpGet("getByUserId")]
+    public async Task<IActionResult> GetByUserId( CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.GetBasketByUserIdAsync(userId, cancellationToken);
+        var result = await _cartItemsService.GetBasketByUserIdAsync(cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -46,35 +46,35 @@ public class CartItemsController : ControllerBase
     [HttpPut("updateItem")]
     public async Task<IActionResult> UpdateItem([FromBody] UpdateCartItemDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.UpdateItemAsync(dto.UserId, dto, cancellationToken);
+        var result = await _cartItemsService.UpdateItemAsync(dto, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpDelete("removeItem/{userId:int}/{cartItemId:int}")]
-    public async Task<IActionResult> RemoveItem(int userId, int cartItemId, CancellationToken cancellationToken = default)
+    [HttpDelete("removeItem/{cartItemId:int}")]
+    public async Task<IActionResult> RemoveItem(int cartItemId, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.RemoveItemAsync(userId, cartItemId, cancellationToken);
+        var result = await _cartItemsService.RemoveItemAsync(cartItemId, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("applyCoupon/{userId:int}")]
-    public async Task<IActionResult> ApplyCoupon(int userId, [FromBody] ApplyCouponDto dto, CancellationToken cancellationToken = default)
+    [HttpPost("applyCoupon")]
+    public async Task<IActionResult> ApplyCoupon([FromBody] ApplyCouponDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.ApplyCouponAsync(userId, dto, cancellationToken);
+        var result = await _cartItemsService.ApplyCouponAsync(dto, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpDelete("removeCoupon/{userId:int}")]
-    public async Task<IActionResult> RemoveCoupon(int userId, CancellationToken cancellationToken = default)
+    [HttpDelete("removeCoupon")]
+    public async Task<IActionResult> RemoveCoupon(CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.RemoveCouponAsync(userId, cancellationToken);
+        var result = await _cartItemsService.RemoveCouponAsync(cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpDelete("clear/{userId:int}")]
-    public async Task<IActionResult> Clear(int userId, CancellationToken cancellationToken = default)
+    [HttpDelete("clear")]
+    public async Task<IActionResult> Clear(CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.ClearCartAsync(userId, cancellationToken);
+        var result = await _cartItemsService.ClearCartAsync(cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 }

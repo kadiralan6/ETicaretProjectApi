@@ -49,6 +49,7 @@ public class UserManager : IUserService
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.PhoneNumber = dto.PhoneNumber;
+        user.BirthDay = dto.BirthDay;
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -127,6 +128,8 @@ public class UserManager : IUserService
         UserName = user.UserName ?? string.Empty,
         FirstName = user.FirstName ?? string.Empty,
         LastName = user.LastName ?? string.Empty,
+        PhoneNumber = user.PhoneNumber,
+        BirthDay = user.BirthDay,
         IsActive = user.IsActive,
         Roles = ParseRoles(user.Roles)
     };

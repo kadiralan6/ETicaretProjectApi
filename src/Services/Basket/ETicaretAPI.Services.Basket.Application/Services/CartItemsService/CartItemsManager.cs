@@ -43,8 +43,14 @@ public class CartItemsManager : ICartItemsService
         _catalogServiceUrl = CoreConfig.GetValue<string>("ExternalApi:CatalogApi:Url");
     }
 
-    public async Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.UserId is null)
+            return ApiResponse<List<GetBasketItemDto>>.Fail("Kullanıcı kimliği doğrulanamadı.", 401);
+
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<List<GetBasketItemDto>>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var cartItems = await _cartItemsRepository.GetByUserIdAsync(userId, cancellationToken);
 
         if (cartItems is null || cartItems.Count == 0)
@@ -124,8 +130,11 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<GetCartItemDto>.Success(result);
     }
 
-    public async Task<ApiResponse<GetCartItemDto>> UpdateItemAsync(int userId, UpdateCartItemDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<GetCartItemDto>> UpdateItemAsync(UpdateCartItemDto dto, CancellationToken cancellationToken = default)
     {
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<GetCartItemDto>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var item = await _cartItemsRepository.GetAsync(
             x => x.Id == dto.CartItemId && x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
@@ -141,8 +150,6 @@ public class CartItemsManager : ICartItemsService
         }
 
         item.Quantity = dto.Quantity;
-        item.CouponId = dto.CouponId;
-        item.OrderNumber = dto.OrderNumber;
         await _cartItemsRepository.UpdateAsync(item, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -150,8 +157,11 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<GetCartItemDto>.Success(result);
     }
 
-    public async Task<ApiResponse<bool>> RemoveItemAsync(int userId, int cartItemId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> RemoveItemAsync(int cartItemId, CancellationToken cancellationToken = default)
     {
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<bool>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var item = await _cartItemsRepository.GetAsync(
             x => x.Id == cartItemId && x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
@@ -165,8 +175,11 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<bool>.Success(true);
     }
 
-    public async Task<ApiResponse<bool>> ApplyCouponAsync(int userId, ApplyCouponDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> ApplyCouponAsync(ApplyCouponDto dto, CancellationToken cancellationToken = default)
     {
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<bool>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var items = await _cartItemsRepository.GetAllAsync(
             x => x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
@@ -193,8 +206,11 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<bool>.Success(true);
     }
 
-    public async Task<ApiResponse<bool>> RemoveCouponAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> RemoveCouponAsync(CancellationToken cancellationToken = default)
     {
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<bool>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var items = await _cartItemsRepository.GetAllAsync(
             x => x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
@@ -213,8 +229,11 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<bool>.Success(true);
     }
 
-    public async Task<ApiResponse<bool>> ClearCartAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> ClearCartAsync(CancellationToken cancellationToken = default)
     {
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<bool>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
         var items = await _cartItemsRepository.GetAllAsync(
             x => x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
@@ -230,9 +249,18 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<bool>.Success(true);
     }
 
-    public async Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<GetCartItemCountDto>> GetItemCountAsync(CancellationToken cancellationToken = default)
     {
-        var (totalQuantity, uniqueItemCount) = await _cartItemsRepository.GetItemCountByUserIdAsync(userId, cancellationToken);
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<GetCartItemCountDto>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
+        var totalQuantity = await _cartItemsRepository.CountAsync(
+                    x => x.UserId == userId && !x.IsDeleted,
+                    cancellationToken: cancellationToken);
+
+        var uniqueItemCount = await _cartItemsRepository.CountAsync(
+            x => x.UserId == userId && !x.IsDeleted,
+            cancellationToken: cancellationToken);
 
         var result = new GetCartItemCountDto
         {
