@@ -10,6 +10,7 @@ public class PaymentDbContext : DbContext
     public PaymentDbContext(DbContextOptions<PaymentDbContext> options) : base(options) { }
 
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+    public DbSet<PaymentDetail> PaymentDetails { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

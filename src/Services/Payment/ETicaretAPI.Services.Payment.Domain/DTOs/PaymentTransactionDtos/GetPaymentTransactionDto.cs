@@ -1,4 +1,5 @@
 using ETicaretAPI.Common.Domain.Entities;
+using ETicaretAPI.Services.Payment.Domain.DTOs.PaymentDetailDtos;
 using ETicaretAPI.Services.Payment.Domain.Enums;
 
 namespace ETicaretAPI.Services.Payment.Domain.DTOs.PaymentTransactionDtos;
@@ -14,4 +15,5 @@ public class GetPaymentTransactionDto : BaseDto
     public decimal Amount { get; set; }
     public string? FailureReason { get; set; }
     public DateTime? CompletedDate { get; set; }
+    public List<GetPaymentDetailDto> Details { get; set; } = [];
 }

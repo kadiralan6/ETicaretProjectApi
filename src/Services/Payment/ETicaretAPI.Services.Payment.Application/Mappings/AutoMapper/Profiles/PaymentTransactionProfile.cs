@@ -1,5 +1,6 @@
 using AutoMapper;
 using ETicaretAPI.Common.Application.Results.Concrete;
+using ETicaretAPI.Services.Payment.Domain.DTOs.PaymentDetailDtos;
 using ETicaretAPI.Services.Payment.Domain.DTOs.PaymentTransactionDtos;
 using ETicaretAPI.Services.Payment.Domain.Entities;
 
@@ -14,6 +15,8 @@ public class PaymentTransactionProfile : Profile
         CreateMap<PaymentTransaction, UpdatePaymentTransactionDto>().ReverseMap();
 
         CreateMap<PaymentTransaction, GetPaymentTransactionDto>().ReverseMap();
+
+        CreateMap<PaymentDetail, GetPaymentDetailDto>().ReverseMap();
 
         CreateMap<PagedResult<PaymentTransaction>, PagedResult<GetPaymentTransactionDto>>().ReverseMap();
     }

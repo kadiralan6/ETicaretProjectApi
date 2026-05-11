@@ -36,6 +36,13 @@ public class PaymentTransactionsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpPost("process")]
+    public async Task<IActionResult> Process([FromBody] ProcessPaymentDto dto, CancellationToken cancellationToken = default)
+    {
+        var result = await _paymentTransactionService.ProcessPaymentAsync(dto, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpPut("update")]
     public async Task<IActionResult> Update([FromBody] UpdatePaymentTransactionDto dto, CancellationToken cancellationToken = default)
     {

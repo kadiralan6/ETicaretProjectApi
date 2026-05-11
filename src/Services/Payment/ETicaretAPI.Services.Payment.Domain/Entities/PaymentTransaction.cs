@@ -16,5 +16,6 @@ public class PaymentTransaction : Entity<int>
     public string? FailureReason { get; set; }
     public DateTime? CompletedDate { get; set; }
 
+    public ICollection<PaymentDetail> Details { get; set; } = [];
 }
 

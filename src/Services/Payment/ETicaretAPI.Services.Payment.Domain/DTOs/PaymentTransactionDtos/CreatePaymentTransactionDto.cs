@@ -1,3 +1,4 @@
+using ETicaretAPI.Services.Payment.Domain.DTOs.PaymentDetailDtos;
 using ETicaretAPI.Services.Payment.Domain.Enums;
 
 namespace ETicaretAPI.Services.Payment.Domain.DTOs.PaymentTransactionDtos;
@@ -10,4 +11,5 @@ public class CreatePaymentTransactionDto
     public string Currency { get; set; } = "TRY";
     public PaymentMethodEnum Method { get; set; }
     public decimal Amount { get; set; }
+    public List<CreatePaymentDetailDto> Details { get; set; } = [];
 }

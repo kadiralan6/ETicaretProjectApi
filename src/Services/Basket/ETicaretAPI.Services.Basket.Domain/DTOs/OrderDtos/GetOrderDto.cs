@@ -1,4 +1,5 @@
 using ETicaretAPI.Common.Domain.Entities;
+using ETicaretAPI.Services.Basket.Domain.Enums;
 
 namespace ETicaretAPI.Services.Basket.Domain.DTOs.OrderDtos;
 
@@ -11,4 +12,5 @@ public class GetOrderDto : BaseDto
     public int Quantity { get; set; }
     public string? OrderNumber { get; set; }
     public int? CouponId { get; set; }
+    public OrderStatusEnum Status { get; set; }
 }

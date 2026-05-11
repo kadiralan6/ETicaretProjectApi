@@ -20,7 +20,7 @@ public class BasketDbContext : DbContext
         if (!optionsBuilder.IsConfigured)
         {
             optionsBuilder.UseNpgsql(
-                "Host=localhost;Port=5432;Database=ETicaretBasketDb;Username=postgres;Password=EticaretAPI123!");
+                "Host=localhost;Port=5432;Database=ETicaretProject_BasketDb;Username=postgres;Password=EticaretAPI123!");
         }
     }
 

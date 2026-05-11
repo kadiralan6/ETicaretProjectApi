@@ -1,3 +1,5 @@
+using ETicaretAPI.Services.Basket.Domain.Enums;
+
 namespace ETicaretAPI.Services.Basket.Domain.DTOs.OrderDtos;
 
 public class UpdateOrderDto
@@ -10,4 +12,5 @@ public class UpdateOrderDto
     public int Quantity { get; set; }
     public string? OrderNumber { get; set; }
     public int? CouponId { get; set; }
+    public OrderStatusEnum Status { get; set; }
 }

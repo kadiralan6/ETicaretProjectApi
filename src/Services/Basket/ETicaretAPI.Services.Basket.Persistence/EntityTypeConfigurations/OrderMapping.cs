@@ -1,5 +1,6 @@
 using ETicaretAPI.Common.Infrastructure.Mappings;
 using ETicaretAPI.Services.Basket.Domain.Entities;
+using ETicaretAPI.Services.Basket.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -39,6 +40,11 @@ public class OrderMapping : BaseEntityConfiguration<Order>
 
         builder.Property(x => x.CouponId)
             .HasColumnName("coupon_id");
+
+        builder.Property(x => x.Status)
+            .HasColumnName("status")
+            .IsRequired()
+            .HasDefaultValue(OrderStatusEnum.Pending);
 
         builder.HasIndex(x => x.UserId)
             .HasDatabaseName("ix_orders_user_id");

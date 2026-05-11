@@ -43,6 +43,13 @@ public class OrdersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpPost("placeOrder")]
+    public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto dto, CancellationToken cancellationToken = default)
+    {
+        var result = await _orderService.PlaceOrderAsync(dto, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpDelete("delete/{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {

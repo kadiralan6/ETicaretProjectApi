@@ -70,6 +70,43 @@ public class PaymentTransactionManager : IPaymentTransactionService
         return ApiResponse<GetPaymentTransactionDto>.Success(result);
     }
 
+    public async Task<ApiResponse<GetPaymentTransactionDto>> ProcessPaymentAsync(ProcessPaymentDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.UserId))
+            throw new ValidationException(["UserId boş olamaz."]);
+
+        if (dto.Items is null || dto.Items.Count == 0)
+            throw new ValidationException(["Ödeme için en az bir ürün gerekli."]);
+
+        var transaction = new PaymentTransaction
+        {
+            OrderId = dto.OrderId,
+            UserId = dto.UserId,
+            TransactionId = Guid.NewGuid().ToString("N"),
+            Currency = string.IsNullOrWhiteSpace(dto.Currency) ? "TRY" : dto.Currency,
+            Method = dto.PaymentMethod,
+            Status = PaymentStatusEnum.Pending,
+            Amount = dto.Amount,
+            Details = dto.Items.Select(item => new PaymentDetail
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                AddressId = dto.AddressId,
+                CardNumber = dto.CardInfo?.CardNumber ?? string.Empty,
+                ExpiryMonth = dto.CardInfo?.ExpiryMonth ?? string.Empty,
+                ExpiryYear = dto.CardInfo?.ExpiryYear ?? string.Empty,
+                Cvv = dto.CardInfo?.Cvv ?? string.Empty,
+                CardHolderName = dto.CardInfo?.CardHolderName ?? string.Empty
+            }).ToList()
+        };
+
+        await _paymentTransactionRepository.AddAsync(transaction, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var result = _mapper.Map<GetPaymentTransactionDto>(transaction);
+        return ApiResponse<GetPaymentTransactionDto>.Success(result);
+    }
+
     public async Task<ApiResponse<GetPaymentTransactionDto>> UpdateAsync(UpdatePaymentTransactionDto dto, CancellationToken cancellationToken = default)
     {
         var transaction = await _paymentTransactionRepository.GetAsync(x => x.Id == dto.Id, cancellationToken: cancellationToken);
