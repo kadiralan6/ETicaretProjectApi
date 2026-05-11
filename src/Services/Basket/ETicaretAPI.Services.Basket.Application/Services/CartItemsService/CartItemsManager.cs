@@ -206,24 +206,23 @@ public class CartItemsManager : ICartItemsService
         return ApiResponse<bool>.Success(true);
     }
 
-    public async Task<ApiResponse<bool>> RemoveCouponAsync(CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> RemoveCouponAsync(int cartItemId, CancellationToken cancellationToken = default)
     {
         if (!int.TryParse(_currentUserService.UserId, out var userId))
             return ApiResponse<bool>.Fail("Geçersiz kullanıcı kimliği.", 400);
 
-        var items = await _cartItemsRepository.GetAllAsync(
-            x => x.UserId == userId && !x.IsDeleted,
+        var item = await _cartItemsRepository.GetAsync(
+            x => x.Id == cartItemId && x.UserId == userId && !x.IsDeleted,
             cancellationToken: cancellationToken);
 
-        if (!items.Any())
-            throw new NotFoundException(nameof(CartItems), $"UserId: {userId}");
+        if (item is null)
+            throw new NotFoundException(nameof(CartItems), cartItemId);
 
-        foreach (var item in items)
-        {
-            item.CouponId = null;
-            await _cartItemsRepository.UpdateAsync(item, cancellationToken);
-        }
+        if (!item.CouponId.HasValue)
+            throw new ValidationException(["Bu sepet ürününe uygulanmış bir kupon bulunmuyor."]);
 
+        item.CouponId = null;
+        await _cartItemsRepository.UpdateAsync(item, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<bool>.Success(true);

@@ -64,10 +64,10 @@ public class CartItemsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpDelete("removeCoupon")]
-    public async Task<IActionResult> RemoveCoupon(CancellationToken cancellationToken = default)
+    [HttpDelete("removeCoupon/{cartItemId:int}")]
+    public async Task<IActionResult> RemoveCoupon(int cartItemId, CancellationToken cancellationToken = default)
     {
-        var result = await _cartItemsService.RemoveCouponAsync(cancellationToken);
+        var result = await _cartItemsService.RemoveCouponAsync(cartItemId, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 

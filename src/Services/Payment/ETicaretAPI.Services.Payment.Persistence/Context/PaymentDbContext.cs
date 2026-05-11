@@ -18,7 +18,7 @@ public class PaymentDbContext : DbContext
 
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=ETicaretPaymentDb;Username=postgres;Password=EticaretAPI123!");
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=ETicaretProjectDb_Payment;Username=postgres;Password=EticaretAPI123!");
         }
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)

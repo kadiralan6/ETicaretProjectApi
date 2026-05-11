@@ -19,7 +19,7 @@ public interface ICartItemsService
 
     Task<ApiResponse<bool>> ApplyCouponAsync(ApplyCouponDto dto, CancellationToken cancellationToken = default);
 
-    Task<ApiResponse<bool>> RemoveCouponAsync(CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> RemoveCouponAsync(int cartItemId, CancellationToken cancellationToken = default);
 
     Task<ApiResponse<bool>> ClearCartAsync(CancellationToken cancellationToken = default);
 

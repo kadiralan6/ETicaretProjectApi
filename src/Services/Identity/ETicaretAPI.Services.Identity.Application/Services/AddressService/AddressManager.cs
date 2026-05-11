@@ -40,15 +40,14 @@ public class AddressManager : IAddressService
         return ApiResponse<AddressDto>.Success(MapToDto(address));
     }
 
-    public async Task<ApiResponse<AddressDto>> CreateAsync(CreateAddressDto dto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<AddressDto>> CreateAsync(CreateAddressDto dto, int userId, CancellationToken cancellationToken = default)
     {
-        // Kullanıcıya ait varsayılan adres varsa ve yeni adres varsayılan yapılıyorsa, eskisini kaldır
         if (dto.IsDefault)
-            await ClearDefaultAddressAsync(dto.UserId, cancellationToken);
+            await ClearDefaultAddressAsync(userId, cancellationToken);
 
         var address = new Address
         {
-            UserId = dto.UserId,
+            UserId = userId,
             Title = dto.Title,
             FullName = dto.FullName,
             PhoneNumber = dto.PhoneNumber,

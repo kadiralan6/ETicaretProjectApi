@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ETicaretAPI.Services.Identity.Application.Services.AddressService;
 using ETicaretAPI.Services.Identity.Domain.DTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -17,9 +18,10 @@ public class AddressesController : ControllerBase
         _addressService = addressService;
     }
 
-    [HttpGet("getByUser/{userId:int}")]
-    public async Task<IActionResult> GetByUserId(int userId, CancellationToken cancellationToken = default)
+    [HttpGet("getByUser")]
+    public async Task<IActionResult> GetByUserId(CancellationToken cancellationToken = default)
     {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _addressService.GetByUserIdAsync(userId, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
@@ -34,7 +36,8 @@ public class AddressesController : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> Create([FromBody] CreateAddressDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _addressService.CreateAsync(dto, cancellationToken);
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _addressService.CreateAsync(dto, userId, cancellationToken);
         return StatusCode(result.StatusCode, result);
     }
 

@@ -64,7 +64,7 @@ public class UserMapping : BaseEntityConfiguration<User>
         builder.HasIndex(x => x.UserName)
             .HasDatabaseName("ix_users_user_name");
 
-        builder.HasMany(x => x.UserAddresses)
+        builder.HasMany(x => x.Addresses)
             .WithOne(x => x.User)
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);

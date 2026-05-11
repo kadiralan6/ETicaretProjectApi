@@ -1,24 +1,12 @@
-using ETicaretAPI.Common.Domain.Interfaces;
-using ETicaretAPI.Common.Persistence.Repositories;
-using ETicaretAPI.Services.Payment.Persistence.Context;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ETicaretAPI.Services.Payment.Infrastructure;
 
 public static class PaymentServiceRegistration
 {
-    public static IServiceCollection AddPaymentServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddPaymentServices(this IServiceCollection services)
     {
-        // DbContext
-        services.AddDbContext<PaymentDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-
-
-        services.AddScoped<IUnitOfWork>(sp =>
-            new UnitOfWork(sp.GetRequiredService<PaymentDbContext>()));
-
+        // Reserved for external 3rd-party integrations (e.g., payment gateway clients)
         return services;
     }
 }

@@ -10,7 +10,6 @@ public class IdentityDbContext : DbContext
 
     public DbSet<User> UsersTable => Set<User>();
     public DbSet<Address> Addresses => Set<Address>();
-    public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

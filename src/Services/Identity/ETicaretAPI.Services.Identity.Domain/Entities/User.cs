@@ -17,6 +17,6 @@ public class User : Entity<int>
     public string Roles { get; set; } = "User";
 
     // Navigation
-    public ICollection<UserAddress> UserAddresses { get; set; } = [];
+    public ICollection<Address> Addresses { get; set; } = [];
 }
 
