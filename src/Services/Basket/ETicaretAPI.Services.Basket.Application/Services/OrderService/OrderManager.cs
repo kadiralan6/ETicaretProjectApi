@@ -1,4 +1,5 @@
 using AutoMapper;
+using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
@@ -18,25 +19,35 @@ namespace ETicaretAPI.Services.Basket.Application.Services.OrderService;
 public class OrderManager : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IOrderItemRepository _orderItemRepository;
+    private readonly ICartItemsRepository _cartItemsRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly ICurrentUserService _currentUserService;
     private readonly IRestApiService _restApiService;
     private readonly string _paymentServiceUrl;
+    private readonly string _catalogServiceUrl;
+    private readonly string _identityServiceUrl;
 
     public OrderManager(
         IOrderRepository orderRepository,
+        IOrderItemRepository orderItemRepository,
+        ICartItemsRepository cartItemsRepository,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ICurrentUserService currentUserService,
         IRestApiService restApiService)
     {
         _orderRepository = orderRepository;
+        _orderItemRepository = orderItemRepository;
+        _cartItemsRepository = cartItemsRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _currentUserService = currentUserService;
         _restApiService = restApiService;
         _paymentServiceUrl = CoreConfig.GetValue<string>("ExternalApi:PaymentApi:Url");
+        _catalogServiceUrl = CoreConfig.GetValue<string>("ExternalApi:CatalogApi:Url");
+        _identityServiceUrl = CoreConfig.GetValue<string>("ExternalApi:IdentityApi:Url");
     }
 
     public async Task<ApiResponse<PagedResult<GetOrderDto>>> GetOrdersFilterAsync(
@@ -104,6 +115,9 @@ public class OrderManager : IOrderService
         if (!int.TryParse(_currentUserService.UserId, out var userId))
             return ApiResponse<PlaceOrderResultDto>.Fail("Geçersiz kullanıcı kimliği.", 400);
 
+        const decimal vatRate = 0.20m;
+        var orderNumber = $"ORD-{Guid.NewGuid():N}"[..20];
+
         var order = new Order
         {
             UserId = userId,
@@ -111,11 +125,40 @@ public class OrderManager : IOrderService
             TotalPrice = dto.Amount,
             Price = dto.Amount,
             Quantity = dto.Items.Sum(x => x.Quantity),
-            OrderNumber = $"ORD-{Guid.NewGuid():N}"[..20],
+            OrderNumber = orderNumber,
+            AddressId = dto.AddressId > 0 ? dto.AddressId : null,
             Status = OrderStatusEnum.Pending
         };
 
         await _orderRepository.AddAsync(order, cancellationToken);
+
+        var orderItems = new List<OrderItem>();
+        foreach (var item in dto.Items)
+        {
+            var productEndpoint = $"{_catalogServiceUrl}/api/catalog/products/getById/{item.ProductId}";
+            var product = await _restApiService.GetDataResultAsync<GetCatalogProductDto>(productEndpoint);
+
+            if (product is null)
+                throw new NotFoundException(nameof(GetCatalogProductDto), item.ProductId);
+
+            var unitPrice = product.Price;
+            var lineTotal = unitPrice * item.Quantity;
+            var vatAmount = decimal.Round(lineTotal * vatRate / (1m + vatRate), 2);
+
+            orderItems.Add(new OrderItem
+            {
+                UserId = userId,
+                ProductId = item.ProductId,
+                Price = unitPrice,
+                TotalPrice = decimal.Round(lineTotal, 2),
+                TotalNetPrice = decimal.Round(lineTotal, 2),
+                VatAmount = vatAmount,
+                Quantity = item.Quantity,
+                OrderNumber = orderNumber
+            });
+        }
+
+        await _orderItemRepository.AddRangeAsync(orderItems, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var paymentRequest = new
@@ -145,6 +188,18 @@ public class OrderManager : IOrderService
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var cartItems = await _cartItemsRepository.GetAllAsync(
+            x => x.UserId == userId && !x.IsDeleted,
+            cancellationToken: cancellationToken);
+
+        if (cartItems.Any())
+        {
+            foreach (var item in cartItems)
+                await _cartItemsRepository.SoftDeleteAsync(item, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
         var result = new PlaceOrderResultDto
         {
             OrderId = order.Id,
@@ -157,6 +212,132 @@ public class OrderManager : IOrderService
         };
 
         return ApiResponse<PlaceOrderResultDto>.Success(result);
+    }
+
+    public async Task<ApiResponse<List<GetMyOrderSummaryDto>>> GetMyOrdersAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(_currentUserService.UserId))
+            return ApiResponse<List<GetMyOrderSummaryDto>>.Fail("Kullanıcı kimliği doğrulanamadı.", 401);
+
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<List<GetMyOrderSummaryDto>>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
+        var orders = await _orderRepository.GetAllAsync(
+            x => x.UserId == userId && !x.IsDeleted,
+            cancellationToken: cancellationToken);
+
+        var summaries = new List<GetMyOrderSummaryDto>();
+
+        foreach (var order in orders.OrderByDescending(x => x.CreatedAt))
+        {
+            string? productName = null;
+            try
+            {
+                var productEndpoint = $"{_catalogServiceUrl}/api/catalog/products/getById/{order.ProductId}";
+                var product = await _restApiService.GetDataResultAsync<GetCatalogProductDto>(productEndpoint);
+                productName = product?.Name;
+            }
+            catch { }
+
+            summaries.Add(new GetMyOrderSummaryDto
+            {
+                OrderId = order.Id,
+                OrderNumber = order.OrderNumber,
+                ProductName = productName,
+                Quantity = order.Quantity,
+                TotalPrice = order.TotalPrice,
+                Status = order.Status,
+                CreatedAt = order.CreatedAt
+            });
+        }
+
+        return ApiResponse<List<GetMyOrderSummaryDto>>.Success(summaries);
+    }
+
+    public async Task<ApiResponse<GetOrderDetailDto>> GetOrderDetailAsync(string orderNumber, CancellationToken cancellationToken = default)
+    {
+        if (!_currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(_currentUserService.UserId))
+            return ApiResponse<GetOrderDetailDto>.Fail("Kullanıcı kimliği doğrulanamadı.", 401);
+
+        if (!int.TryParse(_currentUserService.UserId, out var userId))
+            return ApiResponse<GetOrderDetailDto>.Fail("Geçersiz kullanıcı kimliği.", 400);
+
+        var order = await _orderRepository.GetWithAsNoTrackingAsync(
+            x => x.OrderNumber == orderNumber && x.UserId == userId && !x.IsDeleted,
+            cancellationToken: cancellationToken);
+
+        if (order is null)
+            throw new NotFoundException(nameof(Order), orderNumber);
+
+        var orderItems = await _orderItemRepository.GetAllAsync(x => x.UserId == userId && !x.IsDeleted,cancellationToken: cancellationToken);
+
+        var detailItems = new List<GetOrderDetailItemDto>();
+
+        foreach (var item in orderItems)
+        {
+            GetCatalogProductDto? product = null;
+            try
+            {
+                var productEndpoint = $"{_catalogServiceUrl}/api/catalog/products/getById/{item.ProductId}";
+                product = await _restApiService.GetDataResultAsync<GetCatalogProductDto>(productEndpoint);
+            }
+            catch { }
+
+            detailItems.Add(new GetOrderDetailItemDto
+            {
+                ProductId = item.ProductId,
+                ProductName = product?.Name,
+                BrandName = product?.BrandName,
+                CategoryName = product?.CategoryName,
+                Images = product?.Images?.Select(img => new OrderProductImageDto
+                {
+                    Id = img.Id,
+                    Url = img.Url,
+                    IsCover = img.IsCover,
+                    AltText = img.AltText
+                }).ToList() ?? [],
+                Quantity = item.Quantity,
+                Price = item.Price,
+                TotalNetPrice = item.TotalNetPrice
+            });
+        }
+
+        OrderAddressDto? address = null;
+        if (order.AddressId.HasValue)
+        {
+            try
+            {
+                var addressEndpoint = $"{_identityServiceUrl}/api/identity/addresses/getById/{order.AddressId.Value}";
+                var addressResponse = await _restApiService.GetDataResultAsync<OrderAddressDto>(addressEndpoint);
+                address = addressResponse;
+            }
+            catch { }
+        }
+
+        OrderBuyerDto? buyer = null;
+        try
+        {
+            var userEndpoint = $"{_identityServiceUrl}/api/identity/users/getById/{userId}";
+            var userResponse = await _restApiService.GetDataResultAsync<OrderBuyerDto>(userEndpoint);
+            buyer = userResponse;
+            if (buyer is not null)
+                buyer.UserId = userId;
+        }
+        catch { }
+
+        var detail = new GetOrderDetailDto
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            Status = order.Status,
+            TotalPrice = order.TotalPrice,
+            CreatedAt = order.CreatedAt,
+            Items = detailItems,
+            Address = address,
+            Buyer = buyer
+        };
+
+        return ApiResponse<GetOrderDetailDto>.Success(detail);
     }
 
     public async Task<ApiResponse<bool>> DeleteAsync(int id, CancellationToken cancellationToken = default)

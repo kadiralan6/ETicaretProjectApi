@@ -15,6 +15,20 @@ public class OrdersController : ControllerBase
         _orderService = orderService;
     }
 
+    [HttpGet("getMyOrders")]
+    public async Task<IActionResult> GetMyOrders(CancellationToken cancellationToken = default)
+    {
+        var result = await _orderService.GetMyOrdersAsync(cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("getDetail/{orderNumber}")]
+    public async Task<IActionResult> GetDetail(string orderNumber, CancellationToken cancellationToken = default)
+    {
+        var result = await _orderService.GetOrderDetailAsync(orderNumber, cancellationToken);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpGet("getAllFilter")]
     public async Task<IActionResult> GetAllFilter([FromQuery] GetOrderForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
     {

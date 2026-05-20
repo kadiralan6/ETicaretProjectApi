@@ -12,4 +12,6 @@ public interface IOrderService
     Task<ApiResponse<GetOrderDto>> UpdateAsync(UpdateOrderDto dto, CancellationToken cancellationToken = default);
     Task<ApiResponse<bool>> DeleteAsync(int id, CancellationToken cancellationToken = default);
     Task<ApiResponse<PlaceOrderResultDto>> PlaceOrderAsync(PlaceOrderDto dto, CancellationToken cancellationToken = default);
+    Task<ApiResponse<List<GetMyOrderSummaryDto>>> GetMyOrdersAsync(CancellationToken cancellationToken = default);
+    Task<ApiResponse<GetOrderDetailDto>> GetOrderDetailAsync(string orderNumber, CancellationToken cancellationToken = default);
 }

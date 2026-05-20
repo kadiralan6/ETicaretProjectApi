@@ -12,5 +12,6 @@ public class Order : Entity<int>
     public int Quantity { get; set; }
     public string? OrderNumber { get; set; }
     public int? CouponId { get; set; }
+    public int? AddressId { get; set; }
     public OrderStatusEnum Status { get; set; } = OrderStatusEnum.Pending;
 }

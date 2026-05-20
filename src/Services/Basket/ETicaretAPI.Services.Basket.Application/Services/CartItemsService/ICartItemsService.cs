@@ -7,7 +7,7 @@ namespace ETicaretAPI.Services.Basket.Application.Services.CartItemsService;
 
 public interface ICartItemsService
 {
-    Task<ApiResponse<List<GetBasketItemDto>>> GetBasketByUserIdAsync(CancellationToken cancellationToken = default);
+    Task<ApiResponse<GetBasketDto>> GetBasketByUserIdAsync(CancellationToken cancellationToken = default);
 
     Task<ApiResponse<PagedResult<GetCartItemDto>>> GetCartItemsFilterAsync(GetCartForAdminFilterDto filterDto, CancellationToken cancellationToken = default);
 

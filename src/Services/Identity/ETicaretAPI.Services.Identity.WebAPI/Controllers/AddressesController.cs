@@ -8,7 +8,6 @@ namespace ETicaretAPI.Services.Identity.WebAPI.Controllers;
 
 [ApiController]
 [Route("api/identity/[controller]")]
-[Authorize]
 public class AddressesController : ControllerBase
 {
     private readonly IAddressService _addressService;
