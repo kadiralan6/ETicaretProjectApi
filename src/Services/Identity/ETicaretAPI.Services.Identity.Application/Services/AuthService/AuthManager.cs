@@ -1,109 +1,135 @@
 using ETicaretAPI.Common.Application.Exceptions;
 using ETicaretAPI.Common.Application.Responses;
+using ETicaretAPI.Common.Domain.Interfaces;
 using ETicaretAPI.Services.Identity.Application.Services.TokenService;
 using ETicaretAPI.Services.Identity.Domain.DTOs;
 using ETicaretAPI.Services.Identity.Domain.Entities;
+using ETicaretAPI.Services.Identity.Domain.Interfaces.Repositories;
+using Microsoft.AspNetCore.Identity;
 
 namespace ETicaretAPI.Services.Identity.Application.Services.AuthService;
 
 public class AuthManager : IAuthService
 {
-    private readonly Microsoft.AspNetCore.Identity.UserManager<AppUser> _userManager;
-    private readonly Microsoft.AspNetCore.Identity.SignInManager<AppUser> _signInManager;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
+    private readonly IPasswordHasher<User> _passwordHasher;
 
     public AuthManager(
-        Microsoft.AspNetCore.Identity.UserManager<AppUser> userManager,
-        Microsoft.AspNetCore.Identity.SignInManager<AppUser> signInManager,
-        ITokenService tokenService)
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        ITokenService tokenService,
+        IPasswordHasher<User> passwordHasher)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
         _tokenService = tokenService;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto, CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user == null)
-            throw new UnauthorizedException("Gecersiz email veya sifre.");
+        var user = await _userRepository.GetAsync(u => u.Email == dto.Email && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new UnauthorizedException("Geçersiz email veya şifre.");
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, true);
-        if (result.IsLockedOut)
-            throw new BusinessRuleException("Hesabiniz kilitlendi. Lutfen daha sonra tekrar deneyin.");
-        if (!result.Succeeded)
-            throw new UnauthorizedException("Gecersiz email veya sifre.");
+        if (!user.IsActive)
+            throw new UnauthorizedException("Hesabınız aktif değil.");
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = await _tokenService.CreateTokenAsync(user.Id, user.Email!, user.UserName!, roles);
+        var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash!, dto.Password);
+        if (verifyResult == PasswordVerificationResult.Failed)
+            throw new UnauthorizedException("Geçersiz email veya şifre.");
+
+        var roles = ParseRoles(user.Roles);
+        var token = await _tokenService.CreateTokenAsync(user.Id, user.Email!, user.UserName ?? user.Email!, roles);
 
         user.RefreshToken = token.RefreshToken;
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _userManager.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        FillUserInfo(token, user, roles);
         return ApiResponse<TokenDto>.Success(token);
     }
 
     public async Task<ApiResponse<TokenDto>> RegisterAsync(RegisterDto dto, CancellationToken cancellationToken = default)
     {
-        var existingUser = await _userManager.FindByEmailAsync(dto.Email);
-        if (existingUser != null)
-            throw new BusinessRuleException("Bu email adresi zaten kullaniliyor.");
+        var existingUser = await _userRepository.GetWithAsNoTrackingAsync(u => u.Email == dto.Email && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (existingUser is not null)
+            throw new BusinessRuleException("Bu email adresi zaten kullanılıyor.");
 
-        var user = new AppUser
+        var user = new User
         {
-            UserName = dto.Email,
+            UserName = string.IsNullOrWhiteSpace(dto.UserName) ? dto.Email : dto.UserName,
             Email = dto.Email,
             FirstName = dto.FirstName,
             LastName = dto.LastName,
-            EmailConfirmed = true
+            IsActive = true,
+            Roles = "User"
         };
 
-        var result = await _userManager.CreateAsync(user, dto.Password);
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new ValidationException(new List<string> { errors });
-        }
+        user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
 
-        await _userManager.AddToRoleAsync(user, "User");
+        await _userRepository.AddAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = ParseRoles(user.Roles);
         var token = await _tokenService.CreateTokenAsync(user.Id, user.Email!, user.UserName!, roles);
 
         user.RefreshToken = token.RefreshToken;
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _userManager.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        FillUserInfo(token, user, roles);
         return ApiResponse<TokenDto>.Success(token, statusCode: 201);
     }
 
     public async Task<ApiResponse<TokenDto>> RefreshTokenAsync(RefreshTokenDto dto, CancellationToken cancellationToken = default)
     {
-        var user = _userManager.Users.FirstOrDefault(u => u.RefreshToken == dto.RefreshToken);
-        if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
-            throw new UnauthorizedException("Gecersiz veya suresi dolmus refresh token.");
+        var user = await _userRepository.GetAsync(u => u.RefreshToken == dto.RefreshToken && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null || user.RefreshTokenExpiry <= DateTime.UtcNow)
+            throw new UnauthorizedException("Geçersiz veya süresi dolmuş refresh token.");
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = await _tokenService.CreateTokenAsync(user.Id, user.Email!, user.UserName!, roles);
+        var roles = ParseRoles(user.Roles);
+        var token = await _tokenService.CreateTokenAsync(user.Id, user.Email!, user.UserName ?? user.Email!, roles);
 
         user.RefreshToken = token.RefreshToken;
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _userManager.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        FillUserInfo(token, user, roles);
         return ApiResponse<TokenDto>.Success(token);
     }
 
     public async Task<ApiResponse> LogoutAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
-        if (user == null)
-            throw new NotFoundException("Kullanici", userId);
+        var user = await _userRepository.GetAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken: cancellationToken);
+        if (user is null)
+            throw new NotFoundException("Kullanıcı", userId);
 
         user.RefreshToken = null;
         user.RefreshTokenExpiry = null;
-        await _userManager.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse.Success();
     }
+
+    private static void FillUserInfo(TokenDto token, User user, List<string> roles)
+    {
+        token.UserId = user.Id;
+        token.Email = user.Email ?? string.Empty;
+        token.UserName = user.UserName ?? string.Empty;
+        token.FirstName = user.FirstName ?? string.Empty;
+        token.LastName = user.LastName ?? string.Empty;
+        token.Roles = roles;
+    }
+
+    private static List<string> ParseRoles(string roles) =>
+        string.IsNullOrWhiteSpace(roles)
+            ? new List<string> { "User" }
+            : roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 }

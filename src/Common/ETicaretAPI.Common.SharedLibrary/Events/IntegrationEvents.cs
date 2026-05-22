@@ -54,3 +54,59 @@ public class StockUpdatedEvent
   public int NewStockQuantity { get; set; }
   public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>
+/// Ürün oluşturulduğunda fırlatılan event.
+/// Catalog -> Search servisine iletilir (Elasticsearch indexleme).
+/// </summary>
+public class ProductCreatedEvent
+{
+  public int ProductId { get; set; }
+  public string? Code { get; set; }
+  public string? Name { get; set; }
+  public string? Description { get; set; }
+  public string? Slug { get; set; }
+  public decimal Price { get; set; }
+  public int StockQuantity { get; set; }
+  public bool IsActive { get; set; }
+  public bool IsFeatured { get; set; }
+  public int? CategoryId { get; set; }
+  public string? CategoryName { get; set; }
+  public int? BrandId { get; set; }
+  public string? BrandName { get; set; }
+  public List<string> ImageUrls { get; set; } = new();
+  public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Ürün güncellendiğinde fırlatılan event.
+/// Catalog -> Search servisine iletilir (Elasticsearch güncelleme).
+/// </summary>
+public class ProductUpdatedEvent
+{
+  public int ProductId { get; set; }
+  public string? Code { get; set; }
+  public string? Name { get; set; }
+  public string? Description { get; set; }
+  public string? Slug { get; set; }
+  public decimal Price { get; set; }
+  public int StockQuantity { get; set; }
+  public bool IsActive { get; set; }
+  public bool IsFeatured { get; set; }
+  public int? CategoryId { get; set; }
+  public string? CategoryName { get; set; }
+  public int? BrandId { get; set; }
+  public string? BrandName { get; set; }
+  public List<string> ImageUrls { get; set; } = new();
+  public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Ürün silindiğinde fırlatılan event.
+/// Catalog -> Search servisine iletilir (Elasticsearch'ten silme).
+/// </summary>
+public class ProductDeletedEvent
+{
+  public int ProductId { get; set; }
+  public DateTime DeletedDate { get; set; } = DateTime.UtcNow;
+}

@@ -12,6 +12,6 @@ public class OrderItem : Entity<int>
     public decimal TotalNetPrice { get; set; } //kdv dahil indirimli fiyat
     public decimal VatAmount { get; set; }
     public int Quantity { get; set; }
-    public string OrderNumber { get; set; }
-    public int CouponId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
+    public int? CouponId { get; set; }
 }

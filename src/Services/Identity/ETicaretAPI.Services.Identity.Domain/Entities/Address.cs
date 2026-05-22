@@ -4,6 +4,7 @@ namespace ETicaretAPI.Services.Identity.Domain.Entities;
 
 public class Address : Entity<int>
 {
+    public int UserId { get; set; }
     public string? Title { get; set; }
     public string? FullName { get; set; }
     public string? PhoneNumber { get; set; }
@@ -13,4 +14,6 @@ public class Address : Entity<int>
     public string? PostalCode { get; set; }
     public bool IsDefault { get; set; }
 
+    // Navigation
+    public User? User { get; set; }
 }

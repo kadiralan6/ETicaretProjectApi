@@ -1,3 +1,5 @@
+using ETicaretAPI.Common.Application.Interfaces;
+using ETicaretAPI.Common.Infrastructure.Providers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
@@ -15,8 +17,8 @@ public static class InfrastructureServiceRegistration
     // Redis Cache
     services.AddStackExchangeRedisCache(options =>
     {
-      options.Configuration = configuration.GetConnectionString("Redis");
-      options.InstanceName = "ETicaretAPI_";
+      options.Configuration = configuration["RedisConfiguration:ConnectionString"] ?? configuration.GetConnectionString("Redis");
+      options.InstanceName = configuration["RedisConfiguration:InstanceName"] ?? "ETicaretAPI_";
     });
 
     // RabbitMQ
@@ -38,6 +40,9 @@ public static class InfrastructureServiceRegistration
     {
       client.Timeout = TimeSpan.FromSeconds(30);
     });
+
+    // Current User (IHttpContextAccessor must be registered by the host service via AddHttpContextAccessor())
+    services.AddScoped<ICurrentUserService, CurrentUserProvider>();
 
     return services;
   }

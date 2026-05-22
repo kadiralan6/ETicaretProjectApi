@@ -16,6 +16,10 @@ public class ProductImageMapping : BaseEntityConfiguration<ProductImage>
             .HasMaxLength(500)
             .IsRequired();
 
+        builder.Property(x => x.AltText)
+            .HasColumnName("alt_text")
+            .HasMaxLength(200);
+
         builder.Property(x => x.IsCover)
             .HasColumnName("is_cover")
             .HasDefaultValue(false);

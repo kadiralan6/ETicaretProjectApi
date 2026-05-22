@@ -22,7 +22,19 @@ public static class ProductSelector
             BrandId = x.BrandId,
             CreatedAt = x.CreatedAt,
             ModifiedAt = x.ModifiedAt,
-            Category = x.Category != null ? new Category { Id = x.Category.Id, Name = x.Category.Name } : null,
+            Category = x.Category != null ? new Category
+            {
+                Id = x.Category.Id,
+                Name = x.Category.Name,
+                ParentCategoryId = x.Category.ParentCategoryId,
+                ParentCategory = x.Category.ParentCategory != null
+                    ? new Category
+                    {
+                        Id = x.Category.ParentCategory.Id,
+                        Name = x.Category.ParentCategory.Name
+                    }
+                    : null
+            } : null,
             Brand = x.Brand != null ? new Brand { Id = x.Brand.Id, Name = x.Brand.Name } : null
         };
     }

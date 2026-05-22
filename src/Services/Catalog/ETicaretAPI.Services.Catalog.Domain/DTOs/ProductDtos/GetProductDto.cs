@@ -1,3 +1,4 @@
+using ETicaretAPI.Common.Application.DTOs.CatalogDtos;
 using ETicaretAPI.Common.Domain.Entities;
 
 namespace ETicaretAPI.Services.Catalog.Domain.DTOs.ProductDtos;
@@ -13,8 +14,10 @@ public class GetProductDto : BaseDto
     public bool IsActive { get; set; }
     public bool IsFeatured { get; set; }
     public int CategoryId { get; set; }
+    public int? ParentCategoryId { get; set; }
+    public string? ParentCategoryName { get; set; }
     public string? CategoryName { get; set; }
     public int BrandId { get; set; }
     public string? BrandName { get; set; }
-    public List<string> ImageUrls { get; set; } = new List<string>();
+    public List<GetProductImageDto> Images { get; set; } = [];
 }

@@ -8,4 +8,5 @@ public class GetProductImageDto
     public string? Url { get; set; }
     public bool IsCover { get; set; }
     public int ProductId { get; set; }
+    public string? AltText { get; set; }
 }

@@ -1,21 +1,29 @@
 using ETicaretAPI.Common.Infrastructure;
 using ETicaretAPI.Services.Payment.Application;
 using ETicaretAPI.Services.Payment.Infrastructure;
+using ETicaretAPI.Services.Payment.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Controllers
 builder.Services.AddControllers();
 
+// HttpContext accessor (required for ICurrentUserService / CurrentUserProvider)
+builder.Services.AddHttpContextAccessor();
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Infrastructure (DbContext + UnitOfWork)
-builder.Services.AddPaymentServices(builder.Configuration);
+// Persistence (DbContext + Repositories + UnitOfWork)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+builder.Services.AddPersistenceServices(builder.Configuration);
 
-// Application (Services)
+// Application (Services + AutoMapper + Cache + EventBus)
 builder.Services.AddApplicationServices();
+
+// Infrastructure (3rd-party integrations - reserved for future use)
+builder.Services.AddPaymentServices();
 
 // Common Infrastructure (Redis, RabbitMQ, HttpClient)
 builder.Services.AddCommonInfrastructure(builder.Configuration);

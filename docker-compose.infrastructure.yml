@@ -1,0 +1,44 @@
+
+services:
+  # ──── Elasticsearch ──────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: eticaret_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node          # tek node, geliştirme için
+      - xpack.security.enabled=false        # TLS/auth kapalı → http://localhost:9200
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m     # RAM kullanımını sınırla
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ──── Redis ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: eticaret_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # ──── RabbitMQ ───────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: eticaret_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Yönetim UI  →  http://localhost:15672  (guest/guest)
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+volumes:
+  esdata:
+    driver: local

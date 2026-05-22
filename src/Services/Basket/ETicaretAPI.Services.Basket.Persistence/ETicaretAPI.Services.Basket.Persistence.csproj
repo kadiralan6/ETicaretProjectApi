@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ETicaretAPI.Services.Basket.Domain\ETicaretAPI.Services.Basket.Domain.csproj" />
+    <ProjectReference Include="..\ETicaretAPI.Services.Basket.Application\ETicaretAPI.Services.Basket.Application.csproj" />
     <ProjectReference Include="..\..\..\Common\ETicaretAPI.Common.Persistence\ETicaretAPI.Common.Persistence.csproj" />
   </ItemGroup>
 

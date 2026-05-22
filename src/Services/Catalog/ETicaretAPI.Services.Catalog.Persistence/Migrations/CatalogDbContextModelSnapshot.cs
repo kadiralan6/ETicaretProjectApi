@@ -257,6 +257,11 @@ namespace ETicaretAPI.Services.Catalog.Persistence.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("price");
 
+                    b.Property<string>("ShortDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("short_description");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -270,10 +275,12 @@ namespace ETicaretAPI.Services.Catalog.Persistence.Migrations
 
                     b.HasIndex("BrandId");
 
-                    b.HasIndex("CategoryId");
-
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("CategoryId", "IsActive");
+
+                    b.HasIndex("IsFeatured", "IsActive");
 
                     b.ToTable("products", (string)null);
                 });
@@ -286,6 +293,11 @@ namespace ETicaretAPI.Services.Catalog.Persistence.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AltText")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("alt_text");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

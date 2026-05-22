@@ -1,6 +1,7 @@
 using AutoMapper;
 using System.Linq.Expressions;
 using ETicaretAPI.Common.Application.Exceptions;
+using ETicaretAPI.Common.Application.Interfaces;
 using ETicaretAPI.Common.Application.Responses;
 using ETicaretAPI.Common.Application.Results.Concrete;
 using ETicaretAPI.Common.Domain.Interfaces;
@@ -18,14 +19,25 @@ namespace ETicaretAPI.Services.Catalog.Application.Services.CategoryService;
 public class CategoryManager : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ICacheService _cacheService;
 
-    public CategoryManager(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork, IMapper mapper)
+    private static string ProductCacheKey(int productId) => $"catalog:product:{productId}";
+
+    public CategoryManager(
+        ICategoryRepository categoryRepository,
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ICacheService cacheService)
     {
         _categoryRepository = categoryRepository;
+        _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _cacheService = cacheService;
     }
 
     public async Task<ApiResponse<PagedResult<GetCategoryDto>>> GetCategoriesFilterAsync(GetCategoryForAdminFilterDto filterDto, CancellationToken cancellationToken = default)
@@ -56,6 +68,10 @@ public class CategoryManager : ICategoryService
 
         var category = _mapper.Map<Category>(dto);
         category.Slug = dto.Name?.ToSlug() ?? string.Empty;
+
+        // Slug uniqueness kontrolü
+        if (await _categoryRepository.IsSlugExistsAsync(category.Slug, cancellationToken: cancellationToken))
+            throw new ValidationException([$"'{category.Slug}' slug'ı zaten kullanılıyor. Farklı bir kategori adı deneyin."]);
 
         await _categoryRepository.AddAsync(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -104,8 +120,14 @@ public class CategoryManager : ICategoryService
         _mapper.Map(dto, category);
         category.Slug = dto.Name.ToSlug();
 
+        // Slug uniqueness kontrolü (kendi slug'ını hariç tut)
+        if (await _categoryRepository.IsSlugExistsAsync(category.Slug, dto.Id, cancellationToken))
+            throw new ValidationException([$"'{category.Slug}' slug'ı zaten kullanılıyor. Farklı bir kategori adı deneyin."]);
+
         await _categoryRepository.UpdateAsync(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await InvalidateProductCachesByCategoryAsync(dto.Id, cancellationToken);
 
         var result = _mapper.Map<GetCategoryDto>(category);
         return ApiResponse<GetCategoryDto>.Success(result);
@@ -121,6 +143,15 @@ public class CategoryManager : ICategoryService
         await _categoryRepository.SoftDeleteAsync(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await InvalidateProductCachesByCategoryAsync(id, cancellationToken);
+
         return ApiResponse<bool>.Success(true);
+    }
+
+    private async Task InvalidateProductCachesByCategoryAsync(int categoryId, CancellationToken cancellationToken)
+    {
+        var products = await _productRepository.GetAllAsync(x => x.CategoryId == categoryId, cancellationToken: cancellationToken);
+        foreach (var product in products)
+            await _cacheService.RemoveAsync(ProductCacheKey(product.Id), cancellationToken);
     }
 }
